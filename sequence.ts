@@ -12,6 +12,7 @@ type Sequence<T> = {
   reduce: <R>(reducer: (acc: R, next: T) => R, initial?: R) => R;
   some: (predicate: (x: T) => boolean) => boolean;
   every: (predicate: (x: T) => boolean) => boolean;
+  find: (predicate: (x: T) => boolean) => T | undefined;
   forEach: (action: (x: T) => void) => void;
   [Symbol.iterator]: () => Iterator<T>;
 }
@@ -139,6 +140,14 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
         if (!predicate(item)) return false;
       }
       return true;
+    },
+
+    find(predicate) {
+      checkConsumed();
+      for (const item of generator()) {
+        if (predicate(item)) return item;
+      }
+      return undefined;
     },
 
     forEach(action) {
