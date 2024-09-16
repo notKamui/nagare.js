@@ -9,6 +9,8 @@ type Sequence<T> = {
 
   // Terminal operations
   toArray: () => T[];
+  toSet: () => Set<T>;
+  first: () => T | undefined;
   reduce: <R>(reducer: (acc: R, next: T) => R, initial?: R) => R;
   sum: [T] extends [number] ? () => number : never;
   some: (predicate: (x: T) => boolean) => boolean;
@@ -105,6 +107,18 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
     toArray() {
       checkConsumed();
       return Array.from(generator());
+    },
+
+    toSet() {
+      checkConsumed();
+      return new Set(generator());
+    },
+
+    first() {
+      checkConsumed();
+      const iterator = generator();
+      const first = iterator.next();
+      return first.done ? undefined : first.value;
     },
 
     reduce<R>(reducer: (acc: R, x: T) => R, initial?: R) {
