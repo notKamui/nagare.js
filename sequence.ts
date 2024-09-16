@@ -3,13 +3,14 @@ type Sequence<T> = {
   filter: (predicate: (x: T) => boolean) => Sequence<T>;
   map: <R>(transform: (x: T) => R) => Sequence<R>;
   flatMap: <R>(transform: (x: T) => Sequence<R>) => Sequence<R>;
-  flatten: T extends Iterable<infer R> ? () => Sequence<R> : never;
+  flatten: [T] extends [Iterable<infer R>] ? () => Sequence<R> : never;
   take: (limit: number) => Sequence<T>;
   drop: (limit: number) => Sequence<T>;
 
   // Terminal operations
   toArray: () => T[];
   reduce: <R>(reducer: (acc: R, next: T) => R, initial?: R) => R;
+  sum: [T] extends [number] ? () => number : never;
   some: (predicate: (x: T) => boolean) => boolean;
   every: (predicate: (x: T) => boolean) => boolean;
   find: (predicate: (x: T) => boolean) => T | undefined;
@@ -78,7 +79,7 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
           }
         }
       })());
-    } as any,
+    } as [T] extends [Iterable<infer R>] ? () => Sequence<R> : never,
 
     take(limit) {
       return sequenceOf((function* () {
@@ -125,6 +126,16 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
 
       return result;
     },
+
+    sum: function () {
+      checkConsumed();
+      let sum = 0;
+      for (const item of generator()) {
+        if (typeof item !== "number") throw new TypeError("sum() can only be called on sequences of numbers");
+        sum += item;
+      }
+      return sum;
+    } as [T] extends [number] ? () => number : never,
 
     some(predicate) {
       checkConsumed();
