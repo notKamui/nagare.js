@@ -10,6 +10,7 @@ type Sequence<T> = {
   // Terminal operations
   toArray: () => T[];
   toSet: () => Set<T>;
+  toObject: T extends readonly [infer K, infer V] | [infer K, infer V] ? [K] extends [string | number | symbol] ? () => Record<K, V> : never : never;
   first: () => T | undefined;
   reduce: <R>(reducer: (acc: R, next: T) => R, initial?: R) => R;
   sum: [T] extends [number] ? () => number : never;
@@ -74,14 +75,13 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
     flatten: function () {
       return sequenceOf((function* () {
         for (const item of generator()) {
-          if (isIterable(item)) {
-            yield* item;
-          } else {
+          if (!isIterable(item)) {
             throw new TypeError("flatten() can only be called on sequences of iterables");
           }
+          yield* item;
         }
       })());
-    } as [T] extends [Iterable<infer R>] ? () => Sequence<R> : never,
+    } as any,
 
     take(limit) {
       return sequenceOf((function* () {
@@ -114,6 +114,19 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
       return new Set(generator());
     },
 
+    toObject: function () {
+      checkConsumed();
+      const result: any = {};
+      for (const item of generator()) {
+        if (!Array.isArray(item) || item.length !== 2) {
+          throw new TypeError("toObject() can only be called on sequences of pairs");
+        }
+        const [key, value] = item;
+        result[key] = value;
+      }
+      return result;
+    } as any,
+
     first() {
       checkConsumed();
       const iterator = generator();
@@ -145,11 +158,13 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
       checkConsumed();
       let sum = 0;
       for (const item of generator()) {
-        if (typeof item !== "number") throw new TypeError("sum() can only be called on sequences of numbers");
+        if (typeof item !== "number") {
+          throw new TypeError("sum() can only be called on sequences of numbers");
+        }
         sum += item;
       }
       return sum;
-    } as [T] extends [number] ? () => number : never,
+    } as any,
 
     some(predicate) {
       checkConsumed();

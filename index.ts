@@ -6,7 +6,8 @@ const evenDoubled = sequenceOf(numbers)
   .flatten()
   .filter((x) => x % 2 === 0)
   .map((x) => x * 2)
-  .toArray();
+  .map((x) => [x.toString(), x] as const)
+  .toObject();
 console.log(evenDoubled);
 
 const numbers2 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
