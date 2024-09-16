@@ -4,6 +4,8 @@ type Sequence<T> = {
   map: <R>(transform: (x: T) => R) => Sequence<R>;
   flatMap: <R>(transform: (x: T) => Sequence<R>) => Sequence<R>;
   flatten: () => Sequence<T extends Iterable<infer R> ? R : T>;
+  take: (limit: number) => Sequence<T>;
+  drop: (limit: number) => Sequence<T>;
 
   // Terminal operations
   toArray: () => T[];
@@ -71,6 +73,26 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
           } else {
             yield item;
           }
+        }
+      })());
+    },
+
+    take(limit) {
+      return sequenceOf((function* () {
+        let count = 0;
+        for (const item of generator()) {
+          if (count++ >= limit) break;
+          yield item;
+        }
+      })());
+    },
+
+    drop(limit) {
+      return sequenceOf((function* () {
+        let count = 0;
+        for (const item of generator()) {
+          if (count++ < limit) continue;
+          yield item;
         }
       })());
     },
