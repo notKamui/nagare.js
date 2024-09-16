@@ -1,5 +1,6 @@
 type Sequence<T> = {
   // Intermediate operations
+  gather: <V, C>(acc: (item: T, context?: C) => Generator<V>, factory?: () => C) => Sequence<V>;
   filter: (predicate: (x: T) => boolean) => Sequence<T>;
   map: <R>(transform: (x: T) => R) => Sequence<R>;
   flatMap: <R>(transform: (x: T) => Sequence<R>) => Sequence<R>;
@@ -8,6 +9,7 @@ type Sequence<T> = {
   drop: (limit: number) => Sequence<T>;
 
   // Terminal operations
+  collect<A, C>(factory: () => A, accumulator: (acc: A, item: T) => void, finisher?: ((acc: A) => C)): C
   toArray: () => T[];
   toSet: () => Set<T>;
   toObject: T extends readonly [infer K, infer V] | [infer K, infer V] ? [K] extends [string | number | symbol] ? () => Record<K, V> : never : never;
@@ -44,8 +46,28 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
     consumed = true;
   }
 
+  function collect<A, C>(factory: () => A, accumulator: (acc: A, item: T) => void, finisher: ((acc: A) => C) = (acc) => acc as unknown as C): C {
+    checkConsumed();
+    const acc = factory();
+    for (const item of generator()) {
+      accumulator(acc, item);
+    }
+    return finisher(acc);
+  }
+
+  function gather<V, C>(acc: (item: T, context?: C) => Generator<V>, factory?: () => C): Sequence<V> {
+    const context = factory?.();
+    return sequenceOf((function* () {
+      for (const item of generator()) {
+        yield* acc(item, context)
+      }
+    })());
+  }
+
   return {
     // Intermediate operations
+    gather,
+
     filter(predicate) {
       return sequenceOf((function* () {
         for (const item of generator()) {
@@ -104,6 +126,8 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
     },
 
     // Terminal operations
+    collect,
+
     toArray() {
       checkConsumed();
       return Array.from(generator());
@@ -115,16 +139,17 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
     },
 
     toObject: function () {
-      checkConsumed();
-      const result: any = {};
-      for (const item of generator()) {
-        if (!Array.isArray(item) || item.length !== 2) {
-          throw new TypeError("toObject() can only be called on sequences of pairs");
-        }
-        const [key, value] = item;
-        result[key] = value;
-      }
-      return result;
+      return collect(
+        () => ({}),
+        (acc: Record<any, any>, item: T) => {
+          if (!Array.isArray(item) || item.length !== 2) {
+            throw new TypeError("toObject() can only be called on sequences of pairs");
+          }
+          const [key, value] = item;
+          acc[key] = value;
+        },
+        (acc) => acc
+      );
     } as any,
 
     first() {
