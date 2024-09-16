@@ -1,14 +1,14 @@
 type Sequence<T> = {
   // Intermediate operations
-  filter: (fn: (x: T) => boolean) => Sequence<T>;
-  map: <R>(fn: (x: T) => R) => Sequence<R>;
-  flatMap: <R>(fn: (x: T) => Sequence<R>) => Sequence<R>;
+  filter: (predicate: (x: T) => boolean) => Sequence<T>;
+  map: <R>(transform: (x: T) => R) => Sequence<R>;
+  flatMap: <R>(transform: (x: T) => Sequence<R>) => Sequence<R>;
   flatten: () => Sequence<T extends Iterable<infer R> ? R : T>;
 
   // Terminal operations
   toArray: () => T[];
-  fold: <R>(initial: R, fn: (acc: R, x: T) => R) => R;
-  forEach: (fn: (x: T) => void) => void;
+  reduce: <R>(reducer: (acc: R, next: T) => R, initial?: R) => R;
+  forEach: (action: (x: T) => void) => void;
   [Symbol.iterator]: () => Iterator<T>;
 }
 
@@ -35,73 +35,79 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
     consumed = true;
   }
 
-  function filter(fn: (x: T) => boolean) {
-    return sequenceOf((function* () {
-      for (const item of generator()) {
-        if (fn(item)) {
-          yield item;
-        }
-      }
-    })());
-  }
-
-  function map<R>(fn: (x: T) => R) {
-    return sequenceOf((function* () {
-      for (const item of generator()) {
-        yield fn(item);
-      }
-    })());
-  }
-
-  function flatMap<R>(fn: (x: T) => Sequence<R>) {
-    return sequenceOf((function* () {
-      for (const item of generator()) {
-        yield* fn(item);
-      }
-    })());
-  }
-
-  function flatten() {
-    return sequenceOf((function* () {
-      for (const item of generator()) {
-        if (isIterable(item)) {
-          yield* item;
-        } else {
-          yield item;
-        }
-      }
-    })());
-  }
-
-  function toArray() {
-    checkConsumed();
-    return Array.from(generator());
-  }
-
-  function fold<R>(initial: R, fn: (acc: R, x: T) => R) {
-    checkConsumed();
-    let result = initial;
-    for (const item of generator()) {
-      result = fn(result, item);
-    }
-    return result;
-  }
-
-  function forEach(fn: (x: T) => void) {
-    checkConsumed();
-    for (const item of generator()) {
-      fn(item);
-    }
-  }
-
   return {
-    filter,
-    map,
-    flatMap,
-    flatten,
-    toArray,
-    fold,
-    forEach,
+    // Intermediate operations
+    filter(predicate) {
+      return sequenceOf((function* () {
+        for (const item of generator()) {
+          if (predicate(item)) {
+            yield item;
+          }
+        }
+      })());
+    },
+
+    map(transform) {
+      return sequenceOf((function* () {
+        for (const item of generator()) {
+          yield transform(item);
+        }
+      })());
+    },
+
+    flatMap(transform) {
+      return sequenceOf((function* () {
+        for (const item of generator()) {
+          yield* transform(item);
+        }
+      })());
+    },
+
+    flatten() {
+      return sequenceOf((function* () {
+        for (const item of generator()) {
+          if (isIterable(item)) {
+            yield* item;
+          } else {
+            yield item;
+          }
+        }
+      })());
+    },
+
+    // Terminal operations
+    toArray() {
+      checkConsumed();
+      return Array.from(generator());
+    },
+
+    reduce<R>(reducer: (acc: R, x: T) => R, initial?: R) {
+      checkConsumed();
+      let iterator = generator();
+      let result: R;
+
+      if (initial === undefined) {
+        const first = iterator.next();
+        if (first.done) throw new TypeError("Reduce of empty sequence with no initial value");
+        result = first.value as unknown as R;
+      } else {
+        result = initial;
+      }
+
+      for (const item of iterator) {
+        result = reducer(result, item);
+      }
+
+      return result;
+    },
+
+    forEach(action) {
+      checkConsumed();
+      for (const item of generator()) {
+        action(item);
+      }
+    },
+
     [Symbol.iterator]: () => {
       checkConsumed();
       return generator();
