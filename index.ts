@@ -9,7 +9,8 @@ const evenDoubled = sequenceOf(numbers)
   .toArray();
 console.log(evenDoubled);
 
-const sum = sequenceOf(numbers)
-  .flatten()
+const numbers2 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+const sum = sequenceOf(numbers2)
   .reduce<number>((acc, x) => acc + x);
 console.log(sum);

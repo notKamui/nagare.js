@@ -3,7 +3,7 @@ type Sequence<T> = {
   filter: (predicate: (x: T) => boolean) => Sequence<T>;
   map: <R>(transform: (x: T) => R) => Sequence<R>;
   flatMap: <R>(transform: (x: T) => Sequence<R>) => Sequence<R>;
-  flatten: () => Sequence<T extends Iterable<infer R> ? R : T>;
+  flatten: T extends Iterable<infer R> ? () => Sequence<R> : never;
   take: (limit: number) => Sequence<T>;
   drop: (limit: number) => Sequence<T>;
 
@@ -17,7 +17,7 @@ type Sequence<T> = {
   [Symbol.iterator]: () => Iterator<T>;
 }
 
-class SequenceConsumedError extends Error {
+export class SequenceConsumedError extends Error {
   constructor() {
     super("Sequence has already been consumed");
   }
@@ -68,17 +68,17 @@ export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
       })());
     },
 
-    flatten() {
+    flatten: function () {
       return sequenceOf((function* () {
         for (const item of generator()) {
           if (isIterable(item)) {
             yield* item;
           } else {
-            yield item;
+            throw new TypeError("flatten() can only be called on sequences of iterables");
           }
         }
       })());
-    },
+    } as any,
 
     take(limit) {
       return sequenceOf((function* () {
