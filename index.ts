@@ -1,32 +1,22 @@
 import { sequenceOf } from "./sequence";
+import { sequenceOf as sequenceOf2 } from "./sequence2";
 
-const numbers = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]];
-
-const evenDoubled = sequenceOf(numbers)
-  .flatten()
-  .filter((x) => x % 2 === 0)
-  .map((x) => x * 2)
-  .map((x) => [x.toString(), x] as const)
-  .toObject();
-console.log(evenDoubled);
-
-const numbers2 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-const sum = sequenceOf(numbers2)
-  .sum();
-console.log(sum);
-
-const a = (function* (nb: number) {
-  if (nb % 2 == 0) {
-    yield nb;
+function* numbers() {
+  for (let i = 0; i < 1_000_000; i++) {
+    yield i;
   }
-})
+};
 
-const even = sequenceOf(numbers2)
-  .gather(function* (item) {
-    if (item % 2 == 0) {
-      yield item;
-    }
-  })
-  .toArray();
-console.log(even);
+const start1 = Bun.nanoseconds();
+const result1 = sequenceOf(numbers())
+  .filter(n => n % 2 === 0)
+  .sum();
+console.log("sequenceOf ", result1);
+console.log("sequenceOf ", Bun.nanoseconds() - start1);
+
+const start2 = Bun.nanoseconds();
+const result2 = sequenceOf2(numbers())
+  .filter(n => n % 2 === 0)
+  .sum();
+console.log("sequenceOf2", result2);
+console.log("sequenceOf2", Bun.nanoseconds() - start2);
