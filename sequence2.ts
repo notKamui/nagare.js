@@ -1,22 +1,22 @@
 type Sink<E> = (item: E) => boolean;
 
-type Gatherer<T> = <V, C>(
-  acc: (item: T, push: (item: V) => boolean, context?: C) => boolean,
+type Gatherer<T, V, C> = {
+  accumulator: (item: T, push: (item: V) => boolean, context?: C) => boolean,
   factory?: () => C,
   finisher?: (push: (item: V) => void, context?: C) => void
-) => Sequence<V>;
+}
 
-type Collector<T> = <A, C>(
+type Collector<T, A, C> = {
   factory: () => A,
   accumulator: (acc: A, item: T) => void,
   finisher?: (acc: A) => C
-) => C;
+}
 
 interface Sequence<T> {
-  gather: Gatherer<T>;
+  gather: <V, C>(gatherer: Gatherer<T, V, C>) => Sequence<V>;
   filter(predicate: (item: T) => boolean): Sequence<T>;
 
-  collect: Collector<T>;
+  collect: <A, C>(collector: Collector<T, A, C>) => C;
   forEach(action: (item: T) => void): void;
   toArray(): T[];
   sum: [T] extends [number] ? () => number : never;
@@ -59,22 +59,23 @@ function node<Head, In, Out>(
     });
   }
 
-  function collect<A, C>(factory: () => A, accumulator: (acc: A, item: Out) => void, finisher: (acc: A) => C = acc => acc as unknown as C): C {
+  function collect<A, C>({ factory, accumulator, finisher }: Collector<Out, A, C>): C {
     const acc = factory();
     forEach(item => accumulator(acc, item));
-    return finisher(acc);
+    const _finisher = finisher ?? ((acc: A) => acc as unknown as C);
+    return _finisher(acc);
   }
 
   return {
     [WrapAll]: __wrapAll,
 
-    gather(acc, factory, finisher) {
+    gather({ accumulator, factory, finisher }) {
       const context = factory?.();
       return node(
         source,
         this,
         downstream => item => {
-          if (acc(item, downstream, context)) {
+          if (accumulator(item, downstream, context)) {
             return true;
           }
           finisher?.(downstream, context);
@@ -84,11 +85,13 @@ function node<Head, In, Out>(
     },
 
     filter(predicate) {
-      return this.gather((item, push) => {
-        if (predicate(item)) {
-          return push(item);
+      return this.gather({
+        accumulator(item, push) {
+          if (predicate(item)) {
+            return push(item);
+          }
+          return true;
         }
-        return true;
       })
     },
 
@@ -97,7 +100,7 @@ function node<Head, In, Out>(
     forEach,
 
     toArray() {
-      return collect(() => [] as Out[], (acc, item) => acc.push(item));
+      return collect({ factory: () => [] as Out[], accumulator: (acc, item) => acc.push(item) });
     },
 
     sum: function () {
