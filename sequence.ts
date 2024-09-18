@@ -1,4 +1,6 @@
-type Sink<E> = (item: E) => boolean;
+interface Sink<E> {
+  accept(item: E): boolean
+};
 
 type Gatherer<T, V, C> = {
   initializer?: () => C,
@@ -40,22 +42,26 @@ function node<Head, In, Out>(
   function consume(sink: Sink<Out>) {
     if (consumed) throw new Error("Sequence has already been consumed");
     consumed = true;
-    const accept = __wrapAll((item) => {
-      sink(item);
-      return true;
+    const head = __wrapAll({
+      accept(item) {
+        sink.accept(item);
+        return true;
+      }
     });
     const iterator = source();
     while (true) {
       const { done, value } = iterator.next();
       if (done) break;
-      if (!accept(value)) break;
+      if (!head.accept(value)) break;
     }
   }
 
   function forEach(action: (item: Out) => void) {
-    consume((item) => {
-      action(item);
-      return true;
+    consume({
+      accept(item) {
+        action(item);
+        return true;
+      }
     });
   }
 
@@ -74,13 +80,15 @@ function node<Head, In, Out>(
       return node(
         source,
         this,
-        downstream => item => {
-          if (integrator(item, downstream, context)) {
-            return true;
+        downstream => ({
+          accept(item) {
+            if (integrator(item, downstream.accept, context)) {
+              return true;
+            }
+            finisher?.(downstream.accept, context);
+            return false;
           }
-          finisher?.(downstream, context);
-          return false;
-        },
+        }),
       );
     },
 
