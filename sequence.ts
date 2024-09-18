@@ -1,230 +1,125 @@
-type Sequence<T> = {
-  // Intermediate operations
-  gather: <V, C>(acc: (item: T, context?: C) => Generator<V>, factory?: () => C) => Sequence<V>;
-  filter: (predicate: (x: T) => boolean) => Sequence<T>;
-  map: <R>(transform: (x: T) => R) => Sequence<R>;
-  flatMap: <R>(transform: (x: T) => Sequence<R>) => Sequence<R>;
-  flatten: [T] extends [Iterable<infer R>] ? () => Sequence<R> : never;
-  take: (limit: number) => Sequence<T>;
-  drop: (limit: number) => Sequence<T>;
+type Sink<E> = (item: E) => boolean;
 
-  // Terminal operations
-  collect<A, C>(factory: () => A, accumulator: (acc: A, item: T) => void, finisher?: ((acc: A) => C)): C
-  toArray: () => T[];
-  toSet: () => Set<T>;
-  toObject: T extends readonly [infer K, infer V] | [infer K, infer V] ? [K] extends [string | number | symbol] ? () => Record<K, V> : never : never;
-  first: () => T | undefined;
-  reduce: <R>(reducer: (acc: R, next: T) => R, initial?: R) => R;
+type Gatherer<T, V, C> = {
+  accumulator: (item: T, push: (item: V) => boolean, context?: C) => boolean,
+  factory?: () => C,
+  finisher?: (push: (item: V) => void, context?: C) => void
+}
+
+type Collector<T, A, C> = {
+  factory: () => A,
+  accumulator: (acc: A, item: T) => void,
+  finisher?: (acc: A) => C
+}
+
+interface Sequence<T> {
+  gather: <V, C>(gatherer: Gatherer<T, V, C>) => Sequence<V>;
+  filter(predicate: (item: T) => boolean): Sequence<T>;
+
+  collect: <A, C>(collector: Collector<T, A, C>) => C;
+  forEach(action: (item: T) => void): void;
+  toArray(): T[];
   sum: [T] extends [number] ? () => number : never;
-  some: (predicate: (x: T) => boolean) => boolean;
-  every: (predicate: (x: T) => boolean) => boolean;
-  find: (predicate: (x: T) => boolean) => T | undefined;
-  forEach: (action: (x: T) => void) => void;
-  [Symbol.iterator]: () => Iterator<T>;
 }
 
-export class SequenceConsumedError extends Error {
-  constructor() {
-    super("Sequence has already been consumed");
-  }
+const WrapAll = Symbol("__wrapAll");
+interface SequenceNode<Head, Out> extends Sequence<Out> {
+  [WrapAll]: (downstream: Sink<Out>) => Sink<Head>;
 }
 
-function isIterable(obj: any): obj is Iterable<any> {
-  return obj != null && typeof obj[Symbol.iterator] === 'function';
-}
+function node<Head, In, Out>(
+  source: () => Iterator<Head>,
+  previous: SequenceNode<Head, In> | null,
+  wrap: (downstream: Sink<Out>) => Sink<In>,
+  wrapAll?: (downstream: Sink<Out>) => Sink<Head>
+): SequenceNode<Head, Out> {
 
-export function sequenceOf<T>(input: Iterable<T>): Sequence<T> {
-  const generator = function* () {
-    for (const item of input) {
-      yield item;
-    }
-  };
+  const __wrapAll = wrapAll ?? (downstream => previous![WrapAll](wrap(downstream)));
 
   let consumed = false;
-  function checkConsumed() {
-    if (consumed) throw new SequenceConsumedError();
+  function consume(sink: Sink<Out>) {
+    if (consumed) throw new Error("Sequence has already been consumed");
     consumed = true;
-  }
-
-  function collect<A, C>(factory: () => A, accumulator: (acc: A, item: T) => void, finisher: ((acc: A) => C) = (acc) => acc as unknown as C): C {
-    checkConsumed();
-    const acc = factory();
-    for (const item of generator()) {
-      accumulator(acc, item);
+    const accept = __wrapAll((item) => {
+      sink(item);
+      return true;
+    });
+    const iterator = source();
+    while (true) {
+      const { done, value } = iterator.next();
+      if (done) break;
+      if (!accept(value)) break;
     }
-    return finisher(acc);
   }
 
-  function gather<V, C>(acc: (item: T, context?: C) => Generator<V>, factory?: () => C): Sequence<V> {
-    const context = factory?.();
-    return sequenceOf((function* () {
-      for (const item of generator()) {
-        yield* acc(item, context)
-      }
-    })());
+  function forEach(action: (item: Out) => void) {
+    consume((item) => {
+      action(item);
+      return true;
+    });
+  }
+
+  function collect<A, C>({ factory, accumulator, finisher }: Collector<Out, A, C>): C {
+    const acc = factory();
+    forEach(item => accumulator(acc, item));
+    const _finisher = finisher ?? ((acc: A) => acc as unknown as C);
+    return _finisher(acc);
   }
 
   return {
-    // Intermediate operations
-    gather,
+    [WrapAll]: __wrapAll,
+
+    gather({ accumulator, factory, finisher }) {
+      const context = factory?.();
+      return node(
+        source,
+        this,
+        downstream => item => {
+          if (accumulator(item, downstream, context)) {
+            return true;
+          }
+          finisher?.(downstream, context);
+          return false;
+        },
+      );
+    },
 
     filter(predicate) {
-      return sequenceOf((function* () {
-        for (const item of generator()) {
+      return this.gather({
+        accumulator(item, push) {
           if (predicate(item)) {
-            yield item;
+            return push(item);
           }
+          return true;
         }
-      })());
+      })
     },
 
-    map(transform) {
-      return sequenceOf((function* () {
-        for (const item of generator()) {
-          yield transform(item);
-        }
-      })());
-    },
-
-    flatMap(transform) {
-      return sequenceOf((function* () {
-        for (const item of generator()) {
-          yield* transform(item);
-        }
-      })());
-    },
-
-    flatten: function () {
-      return sequenceOf((function* () {
-        for (const item of generator()) {
-          if (!isIterable(item)) {
-            throw new TypeError("flatten() can only be called on sequences of iterables");
-          }
-          yield* item;
-        }
-      })());
-    } as any,
-
-    take(limit) {
-      return sequenceOf((function* () {
-        let count = 0;
-        for (const item of generator()) {
-          if (count++ >= limit) break;
-          yield item;
-        }
-      })());
-    },
-
-    drop(limit) {
-      return sequenceOf((function* () {
-        let count = 0;
-        for (const item of generator()) {
-          if (count++ < limit) continue;
-          yield item;
-        }
-      })());
-    },
-
-    // Terminal operations
     collect,
 
+    forEach,
+
     toArray() {
-      checkConsumed();
-      return Array.from(generator());
-    },
-
-    toSet() {
-      checkConsumed();
-      return new Set(generator());
-    },
-
-    toObject: function () {
-      return collect(
-        () => ({}),
-        (acc: Record<any, any>, item: T) => {
-          if (!Array.isArray(item) || item.length !== 2) {
-            throw new TypeError("toObject() can only be called on sequences of pairs");
-          }
-          const [key, value] = item;
-          acc[key] = value;
-        },
-        (acc) => acc
-      );
-    } as any,
-
-    first() {
-      checkConsumed();
-      const iterator = generator();
-      const first = iterator.next();
-      return first.done ? undefined : first.value;
-    },
-
-    reduce<R>(reducer: (acc: R, x: T) => R, initial?: R) {
-      checkConsumed();
-      let iterator = generator();
-      let result: R;
-
-      if (initial === undefined) {
-        const first = iterator.next();
-        if (first.done) throw new TypeError("Reduce of empty sequence with no initial value");
-        result = first.value as unknown as R;
-      } else {
-        result = initial;
-      }
-
-      for (const item of iterator) {
-        result = reducer(result, item);
-      }
-
-      return result;
+      return collect({ factory: () => [] as Out[], accumulator: (acc, item) => acc.push(item) });
     },
 
     sum: function () {
-      checkConsumed();
       let sum = 0;
-      for (const item of generator()) {
-        if (typeof item !== "number") {
-          throw new TypeError("sum() can only be called on sequences of numbers");
-        }
+      forEach(item => {
+        if (typeof item !== "number") throw new Error("Cannot sum non-numeric values");
         sum += item;
-      }
+      });
       return sum;
     } as any,
 
-    some(predicate) {
-      checkConsumed();
-      for (const item of generator()) {
-        if (predicate(item)) return true;
-      }
-      return false;
-    },
+  }
+}
 
-    every(predicate) {
-      checkConsumed();
-      for (const item of generator()) {
-        if (!predicate(item)) return false;
-      }
-      return true;
-    },
-
-    find(predicate) {
-      checkConsumed();
-      for (const item of generator()) {
-        if (predicate(item)) return item;
-      }
-      return undefined;
-    },
-
-    forEach(action) {
-      checkConsumed();
-      for (const item of generator()) {
-        action(item);
-      }
-    },
-
-    [Symbol.iterator]: () => {
-      checkConsumed();
-      return generator();
-    }
-  };
+export function sequenceOf<T>(iterable: Iterable<T>): Sequence<T> {
+  return node(
+    () => iterable[Symbol.iterator](),
+    null,
+    _ => { throw new Error("Cannot wrap the source node") },
+    downstream => downstream
+  );
 }

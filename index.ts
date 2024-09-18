@@ -1,5 +1,5 @@
-import { sequenceOf } from "./sequence";
-import { sequenceOf as sequenceOf2 } from "./sequence2";
+import { sequenceOf } from "./__sequence";
+import { sequenceOf as sequenceOf2 } from "./sequence";
 
 function* numbers() {
   for (let i = 0; i < 1_000_000; i++) {
