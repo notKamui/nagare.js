@@ -1,5 +1,6 @@
 interface Sink<E> {
   accept(item: E): boolean
+  onFinish(): void
 };
 
 type Gatherer<T, V, C> = {
@@ -46,13 +47,18 @@ function node<Head, In, Out>(
       accept(item) {
         sink.accept(item);
         return true;
-      }
+      },
+      onFinish() {
+        sink.onFinish()
+      },
     });
     const iterator = source();
     while (true) {
       const { done, value } = iterator.next();
-      if (done) break;
-      if (!head.accept(value)) break;
+      if (done || !head.accept(value)) {
+        head.onFinish();
+        break;
+      }
     }
   }
 
@@ -61,7 +67,8 @@ function node<Head, In, Out>(
       accept(item) {
         action(item);
         return true;
-      }
+      },
+      onFinish() { },
     });
   }
 
@@ -75,18 +82,18 @@ function node<Head, In, Out>(
   return {
     [WrapAll]: __wrapAll,
 
-    gather({ initializer: supplier, integrator, finisher }) {
-      const context = supplier?.();
+    gather({ initializer, integrator, finisher }) {
+      const context = initializer?.();
       return node(
         source,
         this,
         downstream => ({
           accept(item) {
-            if (integrator(item, downstream.accept, context)) {
-              return true;
-            }
+            return integrator(item, downstream.accept, context)
+          },
+          onFinish() {
             finisher?.(downstream.accept, context);
-            return false;
+            downstream.onFinish()
           }
         }),
       );
