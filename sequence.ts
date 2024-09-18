@@ -1,13 +1,13 @@
 type Sink<E> = (item: E) => boolean;
 
 type Gatherer<T, V, C> = {
-  factory?: () => C,
-  accumulator: (item: T, push: (item: V) => boolean, context?: C) => boolean,
-  finisher?: (push: (item: V) => boolean, context?: C) => boolean
+  initializer?: () => C,
+  integrator: (item: T, push: (item: V) => boolean, context?: C) => boolean,
+  finisher?: (push: (item: V) => void, context?: C) => void
 }
 
 type Collector<T, A, C> = {
-  factory: () => A,
+  supplier: () => A,
   accumulator: (acc: A, item: T) => void,
   finisher?: (acc: A) => C
 }
@@ -59,8 +59,8 @@ function node<Head, In, Out>(
     });
   }
 
-  function collect<A, C>({ factory, accumulator, finisher }: Collector<Out, A, C>): C {
-    const acc = factory();
+  function collect<A, C>({ supplier, accumulator, finisher }: Collector<Out, A, C>): C {
+    const acc = supplier();
     forEach(item => accumulator(acc, item));
     const _finisher = finisher ?? ((acc: A) => acc as unknown as C);
     return _finisher(acc);
@@ -69,22 +69,24 @@ function node<Head, In, Out>(
   return {
     [WrapAll]: __wrapAll,
 
-    gather({ factory, accumulator, finisher }) {
-      const context = factory?.();
+    gather({ initializer: supplier, integrator, finisher }) {
+      const context = supplier?.();
       return node(
         source,
         this,
         downstream => item => {
-          return accumulator(item, downstream, context)
-            || finisher?.(downstream, context)
-            || false;
+          if (integrator(item, downstream, context)) {
+            return true;
+          }
+          finisher?.(downstream, context);
+          return false;
         },
       );
     },
 
     filter(predicate) {
       return this.gather({
-        accumulator(item, push) {
+        integrator(item, push) {
           if (predicate(item)) {
             return push(item);
           }
@@ -98,7 +100,7 @@ function node<Head, In, Out>(
     forEach,
 
     toArray() {
-      return collect({ factory: () => [] as Out[], accumulator: (acc, item) => acc.push(item) });
+      return collect({ supplier: () => [] as Out[], accumulator: (acc, item) => acc.push(item) });
     },
 
     sum: function () {
