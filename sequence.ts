@@ -1,9 +1,9 @@
 type Sink<E> = (item: E) => boolean;
 
 type Gatherer<T, V, C> = {
-  accumulator: (item: T, push: (item: V) => boolean, context?: C) => boolean,
   factory?: () => C,
-  finisher?: (push: (item: V) => void, context?: C) => void
+  accumulator: (item: T, push: (item: V) => boolean, context?: C) => boolean,
+  finisher?: (push: (item: V) => boolean, context?: C) => boolean
 }
 
 type Collector<T, A, C> = {
@@ -69,17 +69,15 @@ function node<Head, In, Out>(
   return {
     [WrapAll]: __wrapAll,
 
-    gather({ accumulator, factory, finisher }) {
+    gather({ factory, accumulator, finisher }) {
       const context = factory?.();
       return node(
         source,
         this,
         downstream => item => {
-          if (accumulator(item, downstream, context)) {
-            return true;
-          }
-          finisher?.(downstream, context);
-          return false;
+          return accumulator(item, downstream, context)
+            || finisher?.(downstream, context)
+            || false;
         },
       );
     },
