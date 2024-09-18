@@ -1,8 +1,9 @@
 import { sequenceOf } from "./__sequence";
+import { filterGatherer, sumCollector } from "./extended";
 import { sequenceOf as sequenceOf2 } from "./sequence";
 
 function* numbers() {
-  for (let i = 0; i < 1_000_000; i++) {
+  for (let i = 0; i < 100; i++) {
     yield i;
   }
 };
@@ -16,7 +17,7 @@ console.log("sequenceOf ", Bun.nanoseconds() - start1);
 
 const start2 = Bun.nanoseconds();
 const result2 = sequenceOf2(numbers())
-  .filter(n => n % 2 === 0)
-  .sum();
+  .gather(filterGatherer(n => n % 2 === 0))
+  .collect(sumCollector());
 console.log("sequenceOf2", result2);
 console.log("sequenceOf2", Bun.nanoseconds() - start2);
