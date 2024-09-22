@@ -10,7 +10,7 @@ interface TailSink<E> {
   accept(item: E, stop: () => void): boolean
 }
 
-type Gatherer<T, V, C = V> = {
+export type Gatherer<T, V, C = V> = {
   initializer: () => C,
   integrator: (item: T, push: (item: V) => boolean, context: C) => boolean,
   finisher?: (push: (item: V) => void, context: C) => void
@@ -20,7 +20,7 @@ type Gatherer<T, V, C = V> = {
   finisher?: (push: (item: V) => void) => void
 }
 
-type Collector<T, A, C = A> = {
+export type Collector<T, A, C = A> = {
   supplier: () => A,
   accumulator: (acc: A, item: T, stop: () => void) => A,
   finisher?: (acc: A) => C
@@ -51,7 +51,8 @@ export interface Sequence<T> {
   findFirst(predicate: (item: T) => boolean): T | undefined;
   toArray(): T[];
   toSet(): Set<T>;
-  reduce<R>(reducer: (acc: R, next: T) => R, initial?: R): R;
+  reduce<R>(reducer: (acc: R, next: T) => R): R | undefined;
+  reduce<R>(reducer: (acc: R, next: T) => R, initial: R): R;
   sum: [T] extends [number] ? () => number : never;
   some(predicate: (item: T) => boolean): boolean;
   every(predicate: (item: T) => boolean): boolean;
@@ -184,9 +185,13 @@ function node<Head, In, Out>(
       return this.collect(Collectors.toSet());
     },
 
-    reduce(reducer, initial) {
+    reduce: function (
+      this: Sequence<Out>,
+      reducer: (acc: any, next: Out) => any,
+      initial?: any
+    ) {
       return this.collect(Collectors.reduce(reducer, initial));
-    },
+    } as any,
 
     sum: function (this: Sequence<number>) {
       return this.collect(Collectors.sum());

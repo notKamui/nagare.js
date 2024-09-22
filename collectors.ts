@@ -1,4 +1,22 @@
-import { collector } from "./sequence";
+import { collector, type Collector } from "./sequence";
+
+function reduce<T, R>(reducer: (acc: R, next: T) => R): Collector<T, R | undefined>;
+function reduce<T, R>(reducer: (acc: R, next: T) => R, initial: R): Collector<T, R>;
+function reduce<T, R>(reducer: (acc: R, next: T) => R, initial?: R) {
+  return collector<T, R | undefined>({
+    supplier() {
+      return initial
+    },
+    accumulator(acc, item) {
+      if (acc === undefined) {
+        return item as unknown as R
+      } else {
+        return reducer(acc, item)
+      }
+    }
+  })
+}
+
 
 export const Collectors = {
   findFirst<T>(predicate: (item: T) => boolean) {
@@ -34,26 +52,7 @@ export const Collectors = {
     })
   },
 
-  reduce<T, R>(reducer: (acc: R, x: T) => R, initial?: R) {
-    return collector<T, R | undefined, R>({
-      supplier() {
-        return initial
-      },
-      accumulator(acc, item) {
-        if (acc === undefined) {
-          return item as unknown as R
-        } else {
-          return reducer(acc, item)
-        }
-      },
-      finisher(acc) {
-        if (acc === undefined) {
-          throw new TypeError("Reduce of empty sequence with no initial value")
-        }
-        return acc
-      }
-    })
-  },
+  reduce,
 
   sum() {
     return this.reduce<number, number>((acc, x) => acc + x, 0)
