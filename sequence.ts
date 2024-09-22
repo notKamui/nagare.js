@@ -43,6 +43,7 @@ export interface Sequence<T> {
   filter(predicate: (item: T) => boolean): Sequence<T>;
   map<V>(transform: (item: T) => V): Sequence<V>;
   flatMap<V>(transform: (item: T) => Sequence<V>): Sequence<V>;
+  flatten: [T] extends [Iterable<infer R>] ? () => Sequence<R> : never;
   take(limit: number): Sequence<T>;
   drop(limit: number): Sequence<T>;
 
@@ -153,6 +154,10 @@ function node<Head, In, Out>(
     flatMap(transform) {
       return this.gather(Gatherers.flatMap(transform));
     },
+
+    flatten: function (this: Sequence<Iterable<Out>>) {
+      return this.gather(Gatherers.flatten());
+    } as any,
 
     take(limit) {
       return this.gather(Gatherers.take(limit));
