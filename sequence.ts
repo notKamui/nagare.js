@@ -52,6 +52,7 @@ export interface Sequence<T> {
   first(): T | undefined;
   toArray(): T[];
   toSet(): Set<T>;
+  toObject: T extends readonly [infer K, infer V] | [infer K, infer V] ? [K] extends [string | number | symbol] ? () => Record<K, V> : never : never;
   reduce<R>(reducer: (acc: R, next: T) => R): R | undefined;
   reduce<R>(reducer: (acc: R, next: T) => R, initial: R): R;
   sum: [T] extends [number] ? () => number : never;
@@ -189,6 +190,10 @@ function node<Head, In, Out>(
     toSet() {
       return this.collect(Collectors.toSet());
     },
+
+    toObject: function (this: Sequence<[string | number | symbol, Out]>) {
+      return this.collect(Collectors.toObject());
+    } as any,
 
     reduce: function (
       this: Sequence<Out>,
