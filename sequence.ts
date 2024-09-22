@@ -1,39 +1,59 @@
+import { arrayCollector, filterGatherer, findFirstCollector, flatMapGatherer, mapGatherer, setCollector } from "./extended"
+
 interface Sink<E> {
   accept(item: E): boolean
   onFinish(): void
 };
 
-type Gatherer<T, V, C> = {
-  initializer?: () => C,
-  integrator: (item: T, push: (item: V) => boolean, context?: C) => boolean,
-  finisher?: (push: (item: V) => void, context?: C) => void
+interface TailSink<E> {
+  accept(item: E, stop: () => void): boolean
 }
 
-type Collector<T, A, C> = {
+type Gatherer<T, V, C = V> = {
+  initializer: () => C,
+  integrator: (item: T, push: (item: V) => boolean, context: C) => boolean,
+  finisher?: (push: (item: V) => void, context: C) => void
+} | {
+  initializer?: never
+  integrator: (item: T, push: (item: V) => boolean) => boolean
+  finisher?: (push: (item: V) => void) => void
+}
+
+type Collector<T, A, C = A> = {
   supplier: () => A,
-  accumulator: (acc: A, item: T) => A,
+  accumulator: (acc: A, item: T, stop: () => void) => A,
   finisher?: (acc: A) => C
 }
 
-export function gatherer<T, V, C>(gatherer: Gatherer<T, V, C>) {
+export function gatherer<T, V, C = V>(gatherer: Gatherer<T, V, C>) {
   return gatherer;
 }
 
-export function collector<T, A, C>(collector: Collector<T, A, C>) {
+export function collector<T, A, C = A>(collector: Collector<T, A, C>) {
   return collector
 }
 
-interface Sequence<T> {
-  gather: <V, C>(gatherer: Gatherer<T, V, C>) => Sequence<V>;
-  collect: <A, C>(collector: Collector<T, A, C>) => C;
+export interface Sequence<T> {
+  gather: <V, C = V>(gatherer: Gatherer<T, V, C>) => Sequence<V>;
+  collect: <A, C = A>(collector: Collector<T, A, C>) => C;
   forEach(action: (item: T) => void): void;
+
+  // Gatherers
+  filter(predicate: (item: T) => boolean): Sequence<T>;
+  map<V>(transform: (item: T) => V): Sequence<V>;
+  flatMap<V>(transform: (item: T) => Sequence<V>): Sequence<V>;
+
+  // Collectors
+  findFirst(predicate: (item: T) => boolean): T | undefined;
+  toArray(): T[];
+  toSet(): Set<T>;
 }
 
 const WrapAll = Symbol("__wrapAll");
 const Consume = Symbol("__consume")
 interface SequenceNode<Head, Out> extends Sequence<Out> {
   [WrapAll](downstream: Sink<Out>): Sink<Head>;
-  [Consume](sink: Sink<Out>): void;
+  [Consume](sink: TailSink<Out>): void;
 }
 
 function node<Head, In, Out>(
@@ -47,22 +67,26 @@ function node<Head, In, Out>(
   return {
     [WrapAll]: wrapAll ?? (downstream => previous![WrapAll](wrap(downstream))),
 
-    [Consume](sink: Sink<Out>) {
+    [Consume](sink: TailSink<Out>) {
       if (consumed) throw new Error("Sequence has already been consumed");
       consumed = true;
+
+      let shouldStop = false;
+      function stop() {
+        shouldStop = true;
+      }
+
       const head = this[WrapAll]({
         accept(item) {
-          sink.accept(item);
+          sink.accept(item, stop);
           return true;
         },
-        onFinish() {
-          sink.onFinish()
-        },
+        onFinish() { },
       });
       const iterator = source();
       while (true) {
         const { done, value } = iterator.next();
-        if (done || !head.accept(value)) {
+        if (shouldStop || done || !head.accept(value)) {
           head.onFinish();
           break;
         }
@@ -80,23 +104,28 @@ function node<Head, In, Out>(
         this,
         downstream => ({
           accept(item) {
-            return integrator(item, downstream.accept, context)
+            return integrator(item, downstream.accept, context as any);
           },
           onFinish() {
-            finisher?.(downstream.accept, context);
+            finisher?.(downstream.accept, context as any);
             downstream.onFinish()
           }
         }),
       );
     },
 
-    collect<A, C>({
+    collect({
       supplier,
       accumulator,
-      finisher = (acc) => acc as unknown as C
-    }: Collector<Out, A, C>): C {
+      finisher = acc => acc as any
+    }) {
       let acc = supplier();
-      this.forEach(item => acc = accumulator(acc, item));
+      this[Consume]({
+        accept(item, stop) {
+          acc = accumulator(acc, item, stop);
+          return true;
+        },
+      });
       return finisher(acc);
     },
 
@@ -106,8 +135,34 @@ function node<Head, In, Out>(
           action(item);
           return true;
         },
-        onFinish() { },
       });
+    },
+
+    // Gatherers
+    filter(predicate) {
+      return this.gather(filterGatherer(predicate));
+    },
+
+    map(transform) {
+      return this.gather(mapGatherer(transform));
+    },
+
+    flatMap(transform) {
+      return this.gather(flatMapGatherer(transform));
+    },
+
+
+    // Collectors
+    findFirst(predicate) {
+      return this.collect(findFirstCollector(predicate));
+    },
+
+    toArray() {
+      return this.collect(arrayCollector());
+    },
+
+    toSet() {
+      return this.collect(setCollector());
     },
   }
 }
