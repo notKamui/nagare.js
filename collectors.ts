@@ -62,6 +62,24 @@ export const Collectors = {
     })
   },
 
+  toObject<T extends [K, V], K extends string | number | symbol, V>() {
+    return collector<T, [K, V][], Record<K, V>>({
+      supplier() {
+        return []
+      },
+      accumulator(acc, item) {
+        acc.push(item)
+        return acc
+      },
+      finisher(acc) {
+        return acc.reduce((obj, [k, v]) => {
+          obj[k] = v
+          return obj
+        }, {} as Record<K, V>)
+      }
+    })
+  },
+
   reduce,
 
   sum() {
