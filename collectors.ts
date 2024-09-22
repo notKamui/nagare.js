@@ -57,5 +57,31 @@ export const Collectors = {
 
   sum() {
     return this.reduce<number, number>((acc, x) => acc + x, 0)
+  },
+
+  some<T>(predicate: (item: T) => boolean) {
+    return collector<T, boolean>({
+      supplier() { return false },
+      accumulator(acc, item, stop) {
+        if (predicate(item)) {
+          stop()
+          return true
+        }
+        return acc
+      }
+    })
+  },
+
+  every<T>(predicate: (item: T) => boolean) {
+    return collector<T, boolean>({
+      supplier() { return true },
+      accumulator(acc, item, stop) {
+        if (!predicate(item)) {
+          stop()
+          return false
+        }
+        return acc
+      }
+    })
   }
 } as const;

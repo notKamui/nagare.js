@@ -53,6 +53,8 @@ export interface Sequence<T> {
   toSet(): Set<T>;
   reduce<R>(reducer: (acc: R, next: T) => R, initial?: R): R;
   sum: [T] extends [number] ? () => number : never;
+  some(predicate: (item: T) => boolean): boolean;
+  every(predicate: (item: T) => boolean): boolean;
 }
 
 const WrapAll = Symbol("__wrapAll");
@@ -189,6 +191,14 @@ function node<Head, In, Out>(
     sum: function (this: Sequence<number>) {
       return this.collect(Collectors.sum());
     } as any,
+
+    some(predicate) {
+      return this.collect(Collectors.some(predicate));
+    },
+
+    every(predicate) {
+      return this.collect(Collectors.every(predicate));
+    },
   }
 }
 
