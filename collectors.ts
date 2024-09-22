@@ -65,7 +65,7 @@ export const Collectors = {
   reduce,
 
   sum() {
-    return this.reduce<number, number>((acc, x) => acc + x, 0)
+    return reduce<number, number>((acc, x) => acc + x, 0)
   },
 
   some<T>(predicate: (item: T) => boolean) {
