@@ -34,14 +34,28 @@ export const Collectors = {
     })
   },
 
-  sum() {
-    return collector<number, number>({
+  reduce<T, R>(reducer: (acc: R, x: T) => R, initial?: R) {
+    return collector<T, R | undefined, R>({
       supplier() {
-        return 0
+        return initial
       },
       accumulator(acc, item) {
-        return acc + item
+        if (acc === undefined) {
+          return item as unknown as R
+        } else {
+          return reducer(acc, item)
+        }
+      },
+      finisher(acc) {
+        if (acc === undefined) {
+          throw new TypeError("Reduce of empty sequence with no initial value")
+        }
+        return acc
       }
     })
+  },
+
+  sum() {
+    return this.reduce<number, number>((acc, x) => acc + x, 0)
   }
 } as const;

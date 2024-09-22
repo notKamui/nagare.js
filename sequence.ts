@@ -51,6 +51,7 @@ export interface Sequence<T> {
   findFirst(predicate: (item: T) => boolean): T | undefined;
   toArray(): T[];
   toSet(): Set<T>;
+  reduce<R>(reducer: (acc: R, next: T) => R, initial?: R): R;
   sum: [T] extends [number] ? () => number : never;
 }
 
@@ -179,6 +180,10 @@ function node<Head, In, Out>(
 
     toSet() {
       return this.collect(Collectors.toSet());
+    },
+
+    reduce(reducer, initial) {
+      return this.collect(Collectors.reduce(reducer, initial));
     },
 
     sum: function (this: Sequence<number>) {
