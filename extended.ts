@@ -20,7 +20,7 @@ export function mapGatherer<T, V>(transform: (item: T) => V) {
 }
 
 export function flatMapGatherer<T, V>(transform: (item: T) => Sequence<V>) {
-  return gatherer<T, V, V[]>({
+  return gatherer<T, any, V>({
     integrator(item, push) {
       let cancelled = false;
       const subsequence = transform(item);
