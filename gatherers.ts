@@ -34,6 +34,17 @@ export const Gatherers = {
     })
   },
 
+  flatten<T>() {
+    return gatherer<Iterable<T>, T>({
+      integrator(sequence, push) {
+        for (const item of sequence) {
+          if (!push(item)) return false;
+        }
+        return true;
+      }
+    })
+  },
+
   take<T>(limit: number) {
     return gatherer<T, T, { count: number }>({
       initializer() { return { count: 0 } },
