@@ -51,6 +51,7 @@ export interface Sequence<T> {
   findFirst(predicate: (item: T) => boolean): T | undefined;
   toArray(): T[];
   toSet(): Set<T>;
+  sum: [T] extends [number] ? () => number : never;
 }
 
 const WrapAll = Symbol("__wrapAll");
@@ -179,6 +180,10 @@ function node<Head, In, Out>(
     toSet() {
       return this.collect(Collectors.toSet());
     },
+
+    sum: function (this: Sequence<number>) {
+      return this.collect(Collectors.sum());
+    } as any,
   }
 }
 
