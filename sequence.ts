@@ -20,23 +20,23 @@ export type Gatherer<T, V, C = V> = {
   finisher?: (push: (item: V) => void) => void
 }
 
-export type Collector<T, A, C = A> = {
+export type Collector<T, A, R = A> = {
   supplier: () => A,
   accumulator: (acc: A, item: T, stop: () => void) => A,
-  finisher?: (acc: A) => C
+  finisher?: (acc: A) => R
 }
 
 export function gatherer<T, V, C = V>(gatherer: Gatherer<T, V, C>) {
   return gatherer;
 }
 
-export function collector<T, A, C = A>(collector: Collector<T, A, C>) {
+export function collector<T, A, R = A>(collector: Collector<T, A, R>) {
   return collector
 }
 
 export interface Sequence<T> {
   gather: <V, C = V>(gatherer: Gatherer<T, V, C>) => Sequence<V>;
-  collect: <A, C = A>(collector: Collector<T, A, C>) => C;
+  collect: <A, R = A>(collector: Collector<T, A, R>) => R;
   forEach(action: (item: T) => void): void;
 
   // Gatherers
