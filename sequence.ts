@@ -49,6 +49,7 @@ export interface Sequence<T> {
 
   // Collectors
   findFirst(predicate: (item: T) => boolean): T | undefined;
+  first(): T | undefined;
   toArray(): T[];
   toSet(): Set<T>;
   reduce<R>(reducer: (acc: R, next: T) => R): R | undefined;
@@ -175,6 +176,10 @@ function node<Head, In, Out>(
     // Collectors
     findFirst(predicate) {
       return this.collect(Collectors.findFirst(predicate));
+    },
+
+    first() {
+      return this.collect(Collectors.first());
     },
 
     toArray() {

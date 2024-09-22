@@ -32,6 +32,16 @@ export const Collectors = {
     })
   },
 
+  first<T>() {
+    return collector<T, T | undefined>({
+      supplier() { return undefined },
+      accumulator(_, item, stop) {
+        stop();
+        return item;
+      }
+    })
+  },
+
   toArray<T>() {
     return collector<T, T[]>({
       supplier() { return [] },
@@ -82,5 +92,5 @@ export const Collectors = {
         return acc
       }
     })
-  }
+  },
 } as const;
