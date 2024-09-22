@@ -1,4 +1,5 @@
-import { arrayCollector, filterGatherer, findFirstCollector, flatMapGatherer, mapGatherer, setCollector } from "./extended"
+import { Collectors } from "./collectors"
+import { Gatherers } from "./gatherers"
 
 interface Sink<E> {
   accept(item: E): boolean
@@ -42,6 +43,8 @@ export interface Sequence<T> {
   filter(predicate: (item: T) => boolean): Sequence<T>;
   map<V>(transform: (item: T) => V): Sequence<V>;
   flatMap<V>(transform: (item: T) => Sequence<V>): Sequence<V>;
+  take(limit: number): Sequence<T>;
+  drop(limit: number): Sequence<T>;
 
   // Collectors
   findFirst(predicate: (item: T) => boolean): T | undefined;
@@ -140,29 +143,36 @@ function node<Head, In, Out>(
 
     // Gatherers
     filter(predicate) {
-      return this.gather(filterGatherer(predicate));
+      return this.gather(Gatherers.filter(predicate));
     },
 
     map(transform) {
-      return this.gather(mapGatherer(transform));
+      return this.gather(Gatherers.map(transform));
     },
 
     flatMap(transform) {
-      return this.gather(flatMapGatherer(transform));
+      return this.gather(Gatherers.flatMap(transform));
     },
 
+    take(limit) {
+      return this.gather(Gatherers.take(limit));
+    },
+
+    drop(limit) {
+      return this.gather(Gatherers.drop(limit));
+    },
 
     // Collectors
     findFirst(predicate) {
-      return this.collect(findFirstCollector(predicate));
+      return this.collect(Collectors.findFirst(predicate));
     },
 
     toArray() {
-      return this.collect(arrayCollector());
+      return this.collect(Collectors.toArray());
     },
 
     toSet() {
-      return this.collect(setCollector());
+      return this.collect(Collectors.toSet());
     },
   }
 }
