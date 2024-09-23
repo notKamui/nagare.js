@@ -229,7 +229,7 @@ interface SequenceBuilder<M = {}> {
   withGatherer<MethodName extends string, Args extends any[]>(
     name: MethodName,
     gathererFactory: GathererFactory<Args>
-  ): SequenceBuilder<M & Record<MethodName, (...args: Args) => WithCustomMethods<any, M>>>;
+  ): SequenceBuilder<M & { [K in MethodName]: (...args: Args) => WithCustomMethods<any, M> }>;
 
   build(): <T>(iterable: Iterable<T>) => Sequence<T, M>;
 }
