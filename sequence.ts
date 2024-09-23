@@ -80,8 +80,6 @@ function node<Head, In, Out, M = {}>(
   let consumed = false;
 
   return {
-    ...methods,
-
     [WrapAll]: wrapAll ?? (downstream => previous![WrapAll](wrap(downstream))),
 
     [Consume](sink: TailSink<Out>) {
