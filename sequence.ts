@@ -217,9 +217,14 @@ function node<Head, In, Out>(
   }
 }
 
-export function sequenceOf<T>(iterable: Iterable<T>): Sequence<T> {
+export function sequenceOf<T>(iterable: Iterable<T>): Sequence<T>;
+export function sequenceOf<T>(generator: () => T): Sequence<T>;
+export function sequenceOf<T>(iterableOrGenerator: Iterable<T> | (() => T)): Sequence<T> {
+  const source = Symbol.iterator in iterableOrGenerator
+    ? () => iterableOrGenerator[Symbol.iterator]()
+    : () => ({ next: () => ({ done: false, value: iterableOrGenerator() }) });
   return node(
-    () => iterable[Symbol.iterator](),
+    source,
     null,
     _ => { throw new Error("Cannot wrap the source node") },
     downstream => downstream
