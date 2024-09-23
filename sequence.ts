@@ -1,5 +1,5 @@
-import {Collectors} from "./collectors";
-import {Gatherers} from "./gatherers";
+import { Collectors } from "./collectors";
+import { Gatherers } from "./gatherers";
 
 interface Sink<E> {
   accept(item: E): boolean;
@@ -73,17 +73,15 @@ const WrapAll = Symbol("__wrapAll");
 const Consume = Symbol("__consume");
 
 function node<Head, In, Out, M = {}>(
-    source: () => Iterator<Head>,
-    previous: SequenceNode<Head, In> | null,
-    wrap: (downstream: Sink<Out>) => Sink<In>,
-    methods: M,
-    wrapAll?: (downstream: Sink<Out>) => Sink<Head>,
+  source: () => Iterator<Head>,
+  previous: SequenceNode<Head, In> | null,
+  wrap: (downstream: Sink<Out>) => Sink<In>,
+  methods: M,
+  wrapAll?: (downstream: Sink<Out>) => Sink<Head>,
 ): SequenceNode<Head, Out> {
   let consumed = false;
 
   return {
-    ...methods,
-
     [WrapAll]: wrapAll ?? (downstream => previous![WrapAll](wrap(downstream))),
 
     [Consume](sink: TailSink<Out>) {
@@ -106,7 +104,7 @@ function node<Head, In, Out, M = {}>(
       });
       const iterator = source();
       while (true) {
-        const {done, value} = iterator.next();
+        const { done, value } = iterator.next();
         if (shouldStop || done || !head.accept(value)) {
           head.onFinish();
           break;
@@ -114,25 +112,25 @@ function node<Head, In, Out, M = {}>(
       }
     },
 
-    gather({initializer, integrator, finisher}) {
+    gather({ initializer, integrator, finisher }) {
       const context = initializer?.();
       return node(
-          source,
-          this,
-          downstream => ({
-            accept(item) {
-              return integrator(item, downstream.accept, context as any);
-            },
-            onFinish() {
-              finisher?.(downstream.accept, context as any);
-              downstream.onFinish();
-            }
-          }),
-          methods
+        source,
+        this,
+        downstream => ({
+          accept(item) {
+            return integrator(item, downstream.accept, context as any);
+          },
+          onFinish() {
+            finisher?.(downstream.accept, context as any);
+            downstream.onFinish();
+          }
+        }),
+        methods
       );
     },
 
-    collect({supplier, accumulator, finisher = acc => acc as any}) {
+    collect({ supplier, accumulator, finisher = acc => acc as any }) {
       let acc = supplier();
       this[Consume]({
         accept(item, stop) {
@@ -198,9 +196,9 @@ function node<Head, In, Out, M = {}>(
     } as any,
 
     reduce: function (
-        this: Sequence<Out, M>,
-        reducer: (acc: any, next: Out) => any,
-        initial?: any
+      this: Sequence<Out, M>,
+      reducer: (acc: any, next: Out) => any,
+      initial?: any
     ) {
       return this.collect(Collectors.reduce(reducer, initial));
     } as any,
@@ -218,12 +216,12 @@ function node<Head, In, Out, M = {}>(
     },
 
     ...Object.fromEntries(Object.entries(methods as any).map(([name, factory]: [string, any]) =>
-        [
-          name,
-          function (this: any, ...args: any[]) {
-            return this.gather(factory(...args));
-          }
-        ]
+      [
+        name,
+        function (this: any, ...args: any[]) {
+          return this.gather(factory(...args));
+        }
+      ]
     ))
   };
 }
@@ -234,8 +232,8 @@ type Test<M, MethodName extends string, Args extends any[], R> = { [K in MethodN
 
 interface SequenceBuilder<M = {}> {
   withGatherer<MethodName extends string, Args extends any[], R>(
-      name: MethodName,
-      gathererFactory: GathererFactory<Args, R>
+    name: MethodName,
+    gathererFactory: GathererFactory<Args, R>
   ): SequenceBuilder<M & Pick<Test<M, MethodName, Args, R>, MethodName>>;
 
   build(): <T>(iterable: Iterable<T>) => Sequence<T, M> & M;
@@ -246,8 +244,8 @@ export function createSequenceOfBuilder(): SequenceBuilder {
 
   return {
     withGatherer<MethodName extends string, Args extends any[], R>(
-        name: MethodName,
-        gathererFactory: GathererFactory<Args, R>
+      name: MethodName,
+      gathererFactory: GathererFactory<Args, R>
     ) {
       customGatherers[name] = gathererFactory;
       return this as any;
@@ -256,13 +254,13 @@ export function createSequenceOfBuilder(): SequenceBuilder {
     build() {
       return <T>(iterable: Iterable<T>) => {
         return node<T, T, T, {}>(
-            () => iterable[Symbol.iterator](),
-            null,
-            _ => {
-              throw new Error("Cannot wrap the source node");
-            },
-            customGatherers,
-            downstream => downstream
+          () => iterable[Symbol.iterator](),
+          null,
+          _ => {
+            throw new Error("Cannot wrap the source node");
+          },
+          customGatherers,
+          downstream => downstream
         );
       };
     }
@@ -289,16 +287,16 @@ function myOtherGatherer<T>(v: T): Gatherer<T, boolean> {
 
 
 export const sequenceOf = createSequenceOfBuilder()
-    .withGatherer("yup", myGatherer)
-    .withGatherer("np", myOtherGatherer)
-    .build();
+  .withGatherer("yup", myGatherer)
+  .withGatherer("np", myOtherGatherer)
+  .build();
 
 const s = sequenceOf([true, false])
 const res = s
-    .np(5)
-    .yup("hello")
-    .yup("aaaa")
-    .yup("adfzdfegr")
-    .map(x => x * 2)
-    .toArray();
+  .np(5)
+  .yup("hello")
+  .yup("aaaa")
+  .yup("adfzdfegr")
+  .map(x => x * 2)
+  .toArray();
 console.log(res);
