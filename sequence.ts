@@ -226,15 +226,15 @@ function node<Head, In, Out, M = {}>(
   };
 }
 
-type GathererFactory<Args extends any[], R> = (...args: Args) => Gatherer<any, R>;
+type GathererFactory<Args extends any[], R, C = R> = (...args: Args) => Gatherer<any, R, C>;
 
-type Test<M, MethodName extends string, Args extends any[], R> = { [K in MethodName]: (...args: Args) => M & Sequence<R, M> & Test<M, MethodName, Args, R> };
+type Test<M, MethodName extends string, Args extends any[], R, C = R> = { [K in MethodName]: (...args: Args) => M & Sequence<R, M> & Test<M, MethodName, Args, R, C> };
 
 interface SequenceBuilder<M = {}> {
-  withGatherer<MethodName extends string, Args extends any[], R>(
+  withGatherer<MethodName extends string, Args extends any[], R, C = R>(
     name: MethodName,
-    gathererFactory: GathererFactory<Args, R>
-  ): SequenceBuilder<M & Pick<Test<M, MethodName, Args, R>, MethodName>>;
+    gathererFactory: GathererFactory<Args, R, C>
+  ): SequenceBuilder<M & Pick<Test<M, MethodName, Args, R, C>, MethodName>>;
 
   build(): <T>(iterable: Iterable<T>) => Sequence<T, M> & M;
 }
@@ -243,10 +243,7 @@ export function createSequenceOfBuilder(): SequenceBuilder {
   const customGatherers: Record<string, GathererFactory<any[], any>> = {};
 
   return {
-    withGatherer<MethodName extends string, Args extends any[], R>(
-      name: MethodName,
-      gathererFactory: GathererFactory<Args, R>
-    ) {
+    withGatherer(name, gathererFactory) {
       customGatherers[name] = gathererFactory;
       return this as any;
     },
