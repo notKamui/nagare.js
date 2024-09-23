@@ -1,8 +1,9 @@
-import { Collectors } from "./collectors";
-import { Gatherers } from "./gatherers";
+import {Collectors} from "./collectors";
+import {Gatherers} from "./gatherers";
 
 interface Sink<E> {
   accept(item: E): boolean;
+
   onFinish(): void;
 }
 
@@ -37,13 +38,13 @@ export function collector<T, A, R = A>(collector: Collector<T, A, R>) {
 type WithCustomMethods<T, M> = M & Sequence<T, M>;
 
 export type Sequence<T, M = {}> = {
-  gather: <V, C = V>(gatherer: Gatherer<T, V, C>) => WithCustomMethods<V, M>;
+  gather: <V, C = V>(gatherer: Gatherer<T, V, C>) => WithCustomMethods<V, M> & M;
   collect: <A, R = A>(collector: Collector<T, A, R>) => R;
   forEach(action: (item: T) => void): void;
 
   // Built-in Gatherers
-  filter(predicate: (item: T) => boolean): WithCustomMethods<T, M>;
-  map<V>(transform: (item: T) => V): WithCustomMethods<V, M>;
+  filter(predicate: (item: T) => boolean): WithCustomMethods<T, M> & M;
+  map<V>(transform: (item: T) => V): WithCustomMethods<V, M> & M;
   flatMap<V>(transform: (item: T) => WithCustomMethods<V, M>): WithCustomMethods<V, M>;
   flatten: [T] extends [Iterable<infer R>] ? () => WithCustomMethods<R, M> : never;
   take(limit: number): WithCustomMethods<T, M>;
@@ -62,24 +63,27 @@ export type Sequence<T, M = {}> = {
   every(predicate: (item: T) => boolean): boolean;
 };
 
-interface SequenceNode<Head, Out> extends Sequence<Out, {}> {
+interface SequenceNode<Head, Out> extends WithCustomMethods<Out, {}> {
   [WrapAll](downstream: Sink<Out>): Sink<Head>;
+
   [Consume](sink: TailSink<Out>): void;
 }
 
 const WrapAll = Symbol("__wrapAll");
 const Consume = Symbol("__consume");
 
-function node<Head, In, Out>(
-  source: () => Iterator<Head>,
-  previous: SequenceNode<Head, In> | null,
-  wrap: (downstream: Sink<Out>) => Sink<In>,
-  methods: Record<string, GathererFactory<any>>,
-  wrapAll?: (downstream: Sink<Out>) => Sink<Head>
+function node<Head, In, Out, M = {}>(
+    source: () => Iterator<Head>,
+    previous: SequenceNode<Head, In> | null,
+    wrap: (downstream: Sink<Out>) => Sink<In>,
+    methods: M,
+    wrapAll?: (downstream: Sink<Out>) => Sink<Head>,
 ): SequenceNode<Head, Out> {
   let consumed = false;
 
   return {
+    ...methods,
+
     [WrapAll]: wrapAll ?? (downstream => previous![WrapAll](wrap(downstream))),
 
     [Consume](sink: TailSink<Out>) {
@@ -87,6 +91,7 @@ function node<Head, In, Out>(
       consumed = true;
 
       let shouldStop = false;
+
       function stop() {
         shouldStop = true;
       }
@@ -96,11 +101,12 @@ function node<Head, In, Out>(
           sink.accept(item, stop);
           return true;
         },
-        onFinish() { },
+        onFinish() {
+        },
       });
       const iterator = source();
       while (true) {
-        const { done, value } = iterator.next();
+        const {done, value} = iterator.next();
         if (shouldStop || done || !head.accept(value)) {
           head.onFinish();
           break;
@@ -108,26 +114,25 @@ function node<Head, In, Out>(
       }
     },
 
-    // Built-in Gatherers with custom methods
-    gather({ initializer, integrator, finisher }) {
+    gather({initializer, integrator, finisher}) {
       const context = initializer?.();
       return node(
-        source,
-        this,
-        downstream => ({
-          accept(item) {
-            return integrator(item, downstream.accept, context as any);
-          },
-          onFinish() {
-            finisher?.(downstream.accept, context as any);
-            downstream.onFinish();
-          }
-        }),
-        methods
+          source,
+          this,
+          downstream => ({
+            accept(item) {
+              return integrator(item, downstream.accept, context as any);
+            },
+            onFinish() {
+              finisher?.(downstream.accept, context as any);
+              downstream.onFinish();
+            }
+          }),
+          methods
       );
     },
 
-    collect({ supplier, accumulator, finisher = acc => acc as any }) {
+    collect({supplier, accumulator, finisher = acc => acc as any}) {
       let acc = supplier();
       this[Consume]({
         accept(item, stop) {
@@ -160,7 +165,7 @@ function node<Head, In, Out>(
       return this.gather(Gatherers.flatMap(transform));
     },
 
-    flatten: function (this: Sequence<Iterable<Out>, {}>) {
+    flatten: function (this: Sequence<Iterable<Out>, M>) {
       return this.gather(Gatherers.flatten());
     } as any,
 
@@ -188,19 +193,19 @@ function node<Head, In, Out>(
       return this.collect(Collectors.toSet());
     },
 
-    toObject: function (this: Sequence<[string | number | symbol, Out], {}>) {
+    toObject: function (this: Sequence<[string | number | symbol, Out], M>) {
       return this.collect(Collectors.toObject());
     } as any,
 
     reduce: function (
-      this: Sequence<Out, {}>,
-      reducer: (acc: any, next: Out) => any,
-      initial?: any
+        this: Sequence<Out, M>,
+        reducer: (acc: any, next: Out) => any,
+        initial?: any
     ) {
       return this.collect(Collectors.reduce(reducer, initial));
     } as any,
 
-    sum: function (this: Sequence<number, {}>) {
+    sum: function (this: Sequence<number, M>) {
       return this.collect(Collectors.sum());
     } as any,
 
@@ -212,35 +217,37 @@ function node<Head, In, Out>(
       return this.collect(Collectors.every(predicate));
     },
 
-    ...Object.fromEntries(Object.entries(methods).map(([name, factory]) =>
-      [
-        name,
-        function (this: any, ...args: any[]) {
-          return this.gather(factory(...args));
-        }
-      ]
+    ...Object.fromEntries(Object.entries(methods as any).map(([name, factory]: [string, any]) =>
+        [
+          name,
+          function (this: any, ...args: any[]) {
+            return this.gather(factory(...args));
+          }
+        ]
     ))
   };
 }
 
-type GathererFactory<Args extends any[]> = (...args: Args) => Gatherer<any, any>;
+type GathererFactory<Args extends any[], R> = (...args: Args) => Gatherer<any, R>;
+
+type Test<M, MethodName extends string, Args extends any[], R> = { [K in MethodName]: (...args: Args) => M & Sequence<R, M> & Test<M, MethodName, Args, R> };
 
 interface SequenceBuilder<M = {}> {
-  withGatherer<MethodName extends string, Args extends any[]>(
-    name: MethodName,
-    gathererFactory: GathererFactory<Args>
-  ): SequenceBuilder<M & { [K in MethodName]: (...args: Args) => WithCustomMethods<any, M> }>;
+  withGatherer<MethodName extends string, Args extends any[], R>(
+      name: MethodName,
+      gathererFactory: GathererFactory<Args, R>
+  ): SequenceBuilder<M & Pick<Test<M, MethodName, Args, R>, MethodName>>;
 
-  build(): <T>(iterable: Iterable<T>) => Sequence<T, M>;
+  build(): <T>(iterable: Iterable<T>) => Sequence<T, M> & M;
 }
 
 export function createSequenceOfBuilder(): SequenceBuilder {
-  const customGatherers: Record<string, GathererFactory<any[]>> = {};
+  const customGatherers: Record<string, GathererFactory<any[], any>> = {};
 
   return {
-    withGatherer<MethodName extends string, Args extends any[]>(
-      name: MethodName,
-      gathererFactory: GathererFactory<Args>
+    withGatherer<MethodName extends string, Args extends any[], R>(
+        name: MethodName,
+        gathererFactory: GathererFactory<Args, R>
     ) {
       customGatherers[name] = gathererFactory;
       return this as any;
@@ -248,18 +255,50 @@ export function createSequenceOfBuilder(): SequenceBuilder {
 
     build() {
       return <T>(iterable: Iterable<T>) => {
-        const baseSequence = node<T, T, T>(
-          () => iterable[Symbol.iterator](),
-          null,
-          _ => {
-            throw new Error("Cannot wrap the source node");
-          },
-          customGatherers,
-          downstream => downstream
+        return node<T, T, T, {}>(
+            () => iterable[Symbol.iterator](),
+            null,
+            _ => {
+              throw new Error("Cannot wrap the source node");
+            },
+            customGatherers,
+            downstream => downstream
         );
-
-        return baseSequence as any;
       };
     }
   };
 }
+
+
+function myGatherer<T>(message: string): Gatherer<T, number> {
+  return gatherer<T, number>({
+    integrator(item, push) {
+      console.log(message);
+      return push(2);
+    }
+  })
+}
+
+function myOtherGatherer<T>(v: T): Gatherer<T, boolean> {
+  return gatherer<T, boolean>({
+    integrator(item, push) {
+      return push(v === item);
+    }
+  })
+}
+
+
+export const sequenceOf = createSequenceOfBuilder()
+    .withGatherer("yup", myGatherer)
+    .withGatherer("np", myOtherGatherer)
+    .build();
+
+const s = sequenceOf([true, false])
+const res = s
+    .np(5)
+    .yup("hello")
+    .yup("aaaa")
+    .yup("adfzdfegr")
+    .map(x => x * 2)
+    .toArray();
+console.log(res);
