@@ -238,7 +238,7 @@ interface SequenceBuilder<M = {}> {
       gathererFactory: GathererFactory<Args, R>
   ): SequenceBuilder<M & Pick<Test<M, MethodName, Args, R>, MethodName>>;
 
-  build(): <T>(iterable: Iterable<T>) => Sequence<T, M> & M;
+  build(): <T>(iterable: Iterable<T>) => Sequence<T, M> & ChangeFunctionReturnType<M, M>;
 }
 
 export function createSequenceOfBuilder(): SequenceBuilder {
@@ -295,10 +295,16 @@ export const sequenceOf = createSequenceOfBuilder()
 
 const s = sequenceOf([true, false])
 const res = s
-    .np(5)
     .yup("hello")
-    .yup("aaaa")
-    .yup("adfzdfegr")
+    .np(true)
+    .yup("world")
     .map(x => x * 2)
     .toArray();
 console.log(res);
+
+
+type ChangeFunctionReturnType<T, R> = {
+  [K in keyof T]: T[K] extends (...args: infer A) => any
+      ? (...args: A) => R
+      : T[K];
+};
