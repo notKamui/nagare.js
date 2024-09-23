@@ -13,11 +13,11 @@ export function fooGathererFactory(someParam: number) {
   });
 }
 // Usage
-const sequenceBuilder = createSequenceOfBuilder()
-  .withGatherer("foo", fooGathererFactory);
-
-const customSequenceOf = sequenceBuilder.build();
+const customSequenceOf = createSequenceOfBuilder()
+  .withGatherer("foo", fooGathererFactory)
+  .withGatherer("bar", fooGathererFactory)
+  .build();
 
 // Now, chaining built-in methods like `map` works correctly with custom methods like `foo`
-const res = customSequenceOf([0, 1, 2]).map(n => n * 2).foo(2).toArray();
+const res = customSequenceOf([0, 1, 2]).map(n => n * 2).bar(2).foo(2).toArray();
 console.log(res);  // Output: [0, 2, 4]

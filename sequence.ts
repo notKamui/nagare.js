@@ -62,7 +62,7 @@ export type Sequence<T, M = {}> = {
   every(predicate: (item: T) => boolean): boolean;
 };
 
-interface SequenceNode<Head, Out> extends WithCustomMethods<Out, {}> {
+interface SequenceNode<Head, Out, M> extends Sequence<Out, M> {
   [WrapAll](downstream: Sink<Out>): Sink<Head>;
   [Consume](sink: TailSink<Out>): void;
 }
@@ -70,16 +70,18 @@ interface SequenceNode<Head, Out> extends WithCustomMethods<Out, {}> {
 const WrapAll = Symbol("__wrapAll");
 const Consume = Symbol("__consume");
 
-function node<Head, In, Out, M = {}>(
+function node<Head, In, Out, M>(
   source: () => Iterator<Head>,
-  previous: SequenceNode<Head, In> | null,
+  previous: SequenceNode<Head, In, M> | null,
   wrap: (downstream: Sink<Out>) => Sink<In>,
   methods: M,
-  wrapAll?: (downstream: Sink<Out>) => Sink<Head>,
-): SequenceNode<Head, Out> {
+  wrapAll?: (downstream: Sink<Out>) => Sink<Head>
+): SequenceNode<Head, Out, M> {
   let consumed = false;
 
   return {
+    ...methods,  // Spread the custom methods
+
     [WrapAll]: wrapAll ?? (downstream => previous![WrapAll](wrap(downstream))),
 
     [Consume](sink: TailSink<Out>) {
@@ -108,6 +110,7 @@ function node<Head, In, Out, M = {}>(
       }
     },
 
+    // Built-in Gatherers with custom methods
     gather({ initializer, integrator, finisher }) {
       const context = initializer?.();
       return node(
@@ -228,7 +231,7 @@ interface SequenceBuilder<M = {}> {
   withGatherer<MethodName extends string, Args extends any[]>(
     name: MethodName,
     gathererFactory: GathererFactory<Args>
-  ): SequenceBuilder<M & Record<MethodName, (...args: Args) => Sequence<any, M>>>;
+  ): SequenceBuilder<M & Record<MethodName, (...args: Args) => WithCustomMethods<any, M>>>;
 
   build(): <T>(iterable: Iterable<T>) => Sequence<T, M>;
 }
@@ -263,4 +266,16 @@ export function createSequenceOfBuilder(): SequenceBuilder {
   };
 }
 
-export const sequenceOf = createSequenceOfBuilder().build();
+// Example of creating a custom gatherer factory
+export function fooGathererFactory(someParam: number) {
+  return gatherer({
+    initializer: () => ({ count: 0 }),
+    integrator: (item: number, push: (item: number) => boolean, context: { count: number }) => {
+      context.count += 1;
+      if (context.count <= someParam) {
+        return push(item);
+      }
+      return false;
+    }
+  });
+}
