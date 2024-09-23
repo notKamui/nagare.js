@@ -263,17 +263,3 @@ export function createSequenceOfBuilder(): SequenceBuilder {
     }
   };
 }
-
-// Example of creating a custom gatherer factory
-export function fooGathererFactory(someParam: number) {
-  return gatherer({
-    initializer: () => ({ count: 0 }),
-    integrator: (item: number, push: (item: number) => boolean, context: { count: number }) => {
-      context.count += 1;
-      if (context.count <= someParam) {
-        return push(item);
-      }
-      return false;
-    }
-  });
-}
