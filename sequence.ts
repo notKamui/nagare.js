@@ -62,7 +62,7 @@ export type Sequence<T, M = {}> = {
   every(predicate: (item: T) => boolean): boolean;
 };
 
-interface SequenceNode<Head, Out, M> extends Sequence<Out, M> {
+interface SequenceNode<Head, Out> extends Sequence<Out, {}> {
   [WrapAll](downstream: Sink<Out>): Sink<Head>;
   [Consume](sink: TailSink<Out>): void;
 }
@@ -70,13 +70,13 @@ interface SequenceNode<Head, Out, M> extends Sequence<Out, M> {
 const WrapAll = Symbol("__wrapAll");
 const Consume = Symbol("__consume");
 
-function node<Head, In, Out, M>(
+function node<Head, In, Out>(
   source: () => Iterator<Head>,
-  previous: SequenceNode<Head, In, M> | null,
+  previous: SequenceNode<Head, In> | null,
   wrap: (downstream: Sink<Out>) => Sink<In>,
-  methods: M,
+  methods: Record<string, GathererFactory<any>>,
   wrapAll?: (downstream: Sink<Out>) => Sink<Head>
-): SequenceNode<Head, Out, M> {
+): SequenceNode<Head, Out> {
   let consumed = false;
 
   return {
@@ -160,7 +160,7 @@ function node<Head, In, Out, M>(
       return this.gather(Gatherers.flatMap(transform));
     },
 
-    flatten: function (this: Sequence<Iterable<Out>, M>) {
+    flatten: function (this: Sequence<Iterable<Out>, {}>) {
       return this.gather(Gatherers.flatten());
     } as any,
 
@@ -188,19 +188,19 @@ function node<Head, In, Out, M>(
       return this.collect(Collectors.toSet());
     },
 
-    toObject: function (this: Sequence<[string | number | symbol, Out], M>) {
+    toObject: function (this: Sequence<[string | number | symbol, Out], {}>) {
       return this.collect(Collectors.toObject());
     } as any,
 
     reduce: function (
-      this: Sequence<Out, M>,
+      this: Sequence<Out, {}>,
       reducer: (acc: any, next: Out) => any,
       initial?: any
     ) {
       return this.collect(Collectors.reduce(reducer, initial));
     } as any,
 
-    sum: function (this: Sequence<number, M>) {
+    sum: function (this: Sequence<number, {}>) {
       return this.collect(Collectors.sum());
     } as any,
 
@@ -212,7 +212,7 @@ function node<Head, In, Out, M>(
       return this.collect(Collectors.every(predicate));
     },
 
-    ...Object.fromEntries(Object.entries(methods as any).map(([name, factory]: [string, any]) =>
+    ...Object.fromEntries(Object.entries(methods).map(([name, factory]) =>
       [
         name,
         function (this: any, ...args: any[]) {
@@ -248,7 +248,7 @@ export function createSequenceOfBuilder(): SequenceBuilder {
 
     build() {
       return <T>(iterable: Iterable<T>) => {
-        const baseSequence = node<T, T, T, {}>(
+        const baseSequence = node<T, T, T>(
           () => iterable[Symbol.iterator](),
           null,
           _ => {
