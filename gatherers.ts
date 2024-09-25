@@ -149,4 +149,15 @@ export const Gatherers = {
       }
     })
   },
+
+  distinct<T>() {
+    return gatherer<T, T, Set<T>>({
+      initializer() { return new Set() },
+      integrator(item, push, context) {
+        if (context.has(item)) return true;
+        context.add(item);
+        return push(item);
+      }
+    })
+  }
 } as const;
