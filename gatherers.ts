@@ -161,7 +161,7 @@ export const Gatherers = {
     })
   },
 
-  groupBy<T, K, V = T>(keySelector: (item: T) => K, transform: (item: T) => V = item => item as unknown as V) {
+  groupBy<T, K, V = T>(keySelector: (item: T) => K, valueSelector: (item: T) => V = item => item as unknown as V) {
     return gatherer<T, [K, V[]], Map<K, V[] | undefined>>({
       initializer() { return new Map() },
       integrator(item, _, context) {
@@ -171,12 +171,29 @@ export const Gatherers = {
           group = [];
           context.set(key, group);
         }
-        group.push(transform(item));
+        group.push(valueSelector(item));
         return true;
       },
       finisher(push, context) {
         context.forEach((group, key) => {
           if (group) push([key, group]);
+        })
+      }
+    })
+  },
+
+  associateBy<T, K, V = T>(keySelector: (item: T) => K, valueSelector: (item: T) => V = item => item as unknown as V) {
+    return gatherer<T, [K, V], Map<K, V | undefined>>({
+      initializer() { return new Map() },
+      integrator(item, _, context) {
+        const key = keySelector(item);
+        const value = valueSelector(item);
+        context.set(key, value);
+        return true;
+      },
+      finisher(push, context) {
+        context.forEach((value, key) => {
+          if (value) push([key, value]);
         })
       }
     })
