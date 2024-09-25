@@ -21,7 +21,7 @@ export const Gatherers = {
   },
 
   flatMap<T, V>(transform: (item: T) => Sequence<V>) {
-    return gatherer<T, any, V>({
+    return gatherer<T, V>({
       integrator(item, push) {
         let cancelled = false;
         const subsequence = transform(item);
@@ -40,6 +40,21 @@ export const Gatherers = {
         for (const item of sequence) {
           if (!push(item)) return false;
         }
+        return true;
+      }
+    })
+  },
+
+  zipWithNext<T>() {
+    return gatherer<T, [T, T], { prev?: T }>({
+      initializer() {
+        return {}
+      },
+      integrator(item, push, context) {
+        if (context.prev !== undefined) {
+          if (!push([context.prev, item])) return false;
+        }
+        context.prev = item;
         return true;
       }
     })

@@ -10,7 +10,7 @@ interface TailSink<E> {
   accept(item: E, stop: () => void): boolean
 }
 
-export type Gatherer<T, V, C = V> = {
+export type Gatherer<T, V, C = never> = {
   initializer: () => C,
   integrator: (item: T, push: (item: V) => boolean, context: C) => boolean,
   finisher?: (push: (item: V) => void, context: C) => void
@@ -26,11 +26,11 @@ export type Collector<T, A, R = A> = {
   finisher?: (acc: A) => R
 }
 
-export function gatherer<T, V, C = V>(gatherer: Gatherer<T, V, C>) {
+export function gatherer<T, V, C = V>(gatherer: Gatherer<T, V, C>): Gatherer<T, V, any> {
   return gatherer;
 }
 
-export function collector<T, A, R = A>(collector: Collector<T, A, R>) {
+export function collector<T, A, R = A>(collector: Collector<T, A, R>): Collector<T, any, R> {
   return collector
 }
 
@@ -44,6 +44,7 @@ export interface Sequence<T> {
   map<V>(transform: (item: T) => V): Sequence<V>;
   flatMap<V>(transform: (item: T) => Sequence<V>): Sequence<V>;
   flatten: [T] extends [Iterable<infer R>] ? () => Sequence<R> : never;
+  zipWithNext(): Sequence<[T, T]>;
   take(limit: number): Sequence<T>;
   drop(limit: number): Sequence<T>;
 
@@ -165,6 +166,10 @@ function node<Head, In, Out>(
     flatten: function (this: Sequence<Iterable<Out>>) {
       return this.gather(Gatherers.flatten());
     } as any,
+
+    zipWithNext() {
+      return this.gather(Gatherers.zipWithNext());
+    },
 
     take(limit) {
       return this.gather(Gatherers.take(limit));
