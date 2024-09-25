@@ -100,4 +100,13 @@ export const Collectors = {
       }
     })
   },
+
+  count() {
+    return collector<any, number>({
+      supplier() { return 0 },
+      accumulator(acc) {
+        return acc + 1
+      }
+    })
+  }
 } as const;

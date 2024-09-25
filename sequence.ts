@@ -65,6 +65,7 @@ export interface Sequence<T> extends Iterable<T> {
   sum: [T] extends [number] ? () => number : never;
   some(predicate: (item: T) => boolean): boolean;
   every(predicate: (item: T) => boolean): boolean;
+  count(): number;
 }
 
 const WrapAll = Symbol("__wrapAll");
@@ -284,6 +285,10 @@ function node<Head, In, Out>(
 
     every(predicate) {
       return this.collect(Collectors.every(predicate));
+    },
+
+    count() {
+      return this.collect(Collectors.count());
     },
   }
 }
