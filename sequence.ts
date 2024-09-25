@@ -47,6 +47,7 @@ export interface Sequence<T> extends Iterable<T> {
   flatten: [T] extends [Iterable<infer R>] ? () => Sequence<R> : never;
   zipWithNext(): Sequence<[T, T]>;
   zip<V>(other: Sequence<V>): Sequence<[T, V]>;
+  withIndex(): Sequence<[T, number]>;
   take(limit: number): Sequence<T>;
   drop(limit: number): Sequence<T>;
 
@@ -190,6 +191,10 @@ function node<Head, In, Out>(
           return { done: false, value: out };
         }
       }
+    },
+
+    withIndex() {
+      return this.gather(Gatherers.withIndex());
     },
 
     // Gatherers

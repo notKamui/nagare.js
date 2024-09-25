@@ -73,6 +73,17 @@ export const Gatherers = {
     })
   },
 
+  withIndex<T>() {
+    return gatherer<T, [T, number], { index: number }>({
+      initializer() {
+        return { index: 0 }
+      },
+      integrator(item, push, context) {
+        return push([item, context.index++]);
+      }
+    })
+  },
+
   take<T>(limit: number) {
     return gatherer<T, T, { count: number }>({
       initializer() { return { count: 0 } },

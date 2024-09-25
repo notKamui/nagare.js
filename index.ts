@@ -8,7 +8,7 @@ function ns() {
 
 const n = sequenceOf(Math.random)
   .take(10)
-  .gather(Gatherers.zip(sequenceOf(ns)))
+  .gather(Gatherers.withIndex())
   .map(([a, b]) => [b, a])
   .toArray()
   .join("\n");
