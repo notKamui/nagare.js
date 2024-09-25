@@ -1,14 +1,16 @@
 import { Gatherers } from "./gatherers";
 import { sequenceOf } from "./sequence";
 
-let s = 0;
-function ns() {
-  return s++;
-}
+const people = [
+  { name: "Alice", country: "USA" },
+  { name: "Bob", country: "Canada" },
+  { name: "Charlie", country: "USA" },
+  { name: "David", country: "Canada" },
+  { name: "Eve", country: "USA" },
+]
 
-const n = sequenceOf(Math.random)
-  .take(10)
-  .gather(Gatherers.sortedWith((a, b) => a - b))
-  .toArray()
+const n = sequenceOf(people)
+  .groupBy(n => n.country, n => n.name)
+  .toObject();
 
 console.log(n);

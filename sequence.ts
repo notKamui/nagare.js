@@ -55,6 +55,7 @@ export interface Sequence<T> extends Iterable<T> {
   dropWhile(predicate: (item: T) => boolean): Sequence<T>;
   sortedWith(comparator: (a: T, b: T) => number): Sequence<T>;
   distinct(): Sequence<T>;
+  groupBy<K, V = T>(keySelector: (item: T) => K, transform?: (item: T) => V): Sequence<[K, V[]]>;
 
   // Collectors
   findFirst(predicate: (item: T) => boolean): T | undefined;
@@ -254,6 +255,10 @@ function node<Head, In, Out>(
 
     distinct() {
       return this.gather(Gatherers.distinct());
+    },
+
+    groupBy(keySelector, transform) {
+      return this.gather(Gatherers.groupBy(keySelector, transform));
     },
 
     // Collectors

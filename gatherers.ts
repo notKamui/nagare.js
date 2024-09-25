@@ -159,5 +159,26 @@ export const Gatherers = {
         return push(item);
       }
     })
+  },
+
+  groupBy<T, K, V = T>(keySelector: (item: T) => K, transform: (item: T) => V = item => item as unknown as V) {
+    return gatherer<T, [K, V[]], Map<K, V[] | undefined>>({
+      initializer() { return new Map() },
+      integrator(item, _, context) {
+        const key = keySelector(item);
+        let group = context.get(key);
+        if (!group) {
+          group = [];
+          context.set(key, group);
+        }
+        group.push(transform(item));
+        return true;
+      },
+      finisher(push, context) {
+        context.forEach((group, key) => {
+          if (group) push([key, group]);
+        })
+      }
+    })
   }
 } as const;
