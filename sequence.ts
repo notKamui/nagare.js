@@ -34,10 +34,11 @@ export function collector<T, A, R = A>(collector: Collector<T, A, R>): Collector
   return collector
 }
 
-export interface Sequence<T> {
+export interface Sequence<T> extends Iterable<T> {
   gather: <V, C = V>(gatherer: Gatherer<T, V, C>) => Sequence<V>;
   collect: <A, R = A>(collector: Collector<T, A, R>) => R;
   forEach(action: (item: T) => void): void;
+  [Symbol.iterator](): Iterator<T, T>;
 
   // Gatherers
   filter(predicate: (item: T) => boolean): Sequence<T>;
@@ -45,6 +46,7 @@ export interface Sequence<T> {
   flatMap<V>(transform: (item: T) => Sequence<V>): Sequence<V>;
   flatten: [T] extends [Iterable<infer R>] ? () => Sequence<R> : never;
   zipWithNext(): Sequence<[T, T]>;
+  zip<V>(other: Sequence<V>): Sequence<[T, V]>;
   take(limit: number): Sequence<T>;
   drop(limit: number): Sequence<T>;
 
@@ -75,13 +77,16 @@ function node<Head, In, Out>(
   wrapAll?: (downstream: Sink<Out>) => Sink<Head>
 ): SequenceNode<Head, Out> {
   let consumed = false;
+  function checkConsumed() {
+    if (consumed) throw new Error("Sequence has already been consumed");
+    consumed = true;
+  }
 
   return {
     [WrapAll]: wrapAll ?? (downstream => previous![WrapAll](wrap(downstream))),
 
     [Consume](sink: TailSink<Out>) {
-      if (consumed) throw new Error("Sequence has already been consumed");
-      consumed = true;
+      checkConsumed();
 
       let shouldStop = false;
       function stop() {
@@ -150,6 +155,43 @@ function node<Head, In, Out>(
       });
     },
 
+    [Symbol.iterator]() {
+      checkConsumed();
+
+      let shouldStop = false;
+      function stop() {
+        shouldStop = true;
+      }
+
+      let out: Out;
+      const sink: TailSink<Out> = {
+        accept(item) {
+          out = item;
+          return true;
+        }
+      };
+
+      const head = this[WrapAll]({
+        accept(item) {
+          sink.accept(item, stop);
+          return true;
+        },
+        onFinish() { },
+      });
+      const iterator = source();
+
+      return {
+        next() {
+          const { done, value } = iterator.next();
+          if (shouldStop || done || !head.accept(value)) {
+            head.onFinish();
+            return { done: true, value: out };
+          }
+          return { done: false, value: out };
+        }
+      }
+    },
+
     // Gatherers
     filter(predicate) {
       return this.gather(Gatherers.filter(predicate));
@@ -169,6 +211,10 @@ function node<Head, In, Out>(
 
     zipWithNext() {
       return this.gather(Gatherers.zipWithNext());
+    },
+
+    zip(other) {
+      return this.gather(Gatherers.zip(other));
     },
 
     take(limit) {

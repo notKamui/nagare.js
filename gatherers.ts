@@ -60,6 +60,19 @@ export const Gatherers = {
     })
   },
 
+  zip<T, U>(other: Sequence<U>) {
+    return gatherer<T, [T, U], { other: Iterator<U> }>({
+      initializer() {
+        return { other: other[Symbol.iterator]() }
+      },
+      integrator(item, push, context) {
+        const next = context.other.next();
+        if (next.done) return false;
+        return push([item, next.value]);
+      }
+    })
+  },
+
   take<T>(limit: number) {
     return gatherer<T, T, { count: number }>({
       initializer() { return { count: 0 } },
