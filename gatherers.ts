@@ -1,6 +1,15 @@
 import { gatherer, type Sequence } from "./sequence";
 
 export const Gatherers = {
+  peek<T>(callback: (item: T) => void) {
+    return gatherer<T, T>({
+      integrator(item, push) {
+        callback(item);
+        return push(item);
+      }
+    })
+  },
+
   filter<T>(predicate: (item: T) => boolean) {
     return gatherer<T, T>({
       integrator(item, push) {

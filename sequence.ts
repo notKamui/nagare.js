@@ -41,6 +41,7 @@ export interface Sequence<T> extends Iterable<T> {
   [Symbol.iterator](): Iterator<T, T>;
 
   // Gatherers
+  peek(callback: (item: T) => void): Sequence<T>;
   filter(predicate: (item: T) => boolean): Sequence<T>;
   map<V>(transform: (item: T) => V): Sequence<V>;
   flatMap<V>(transform: (item: T) => Sequence<V>): Sequence<V>;
@@ -198,6 +199,10 @@ function node<Head, In, Out>(
     },
 
     // Gatherers
+    peek(callback) {
+      return this.gather(Gatherers.peek(callback));
+    },
+
     filter(predicate) {
       return this.gather(Gatherers.filter(predicate));
     },
