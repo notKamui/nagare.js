@@ -8,9 +8,7 @@ function ns() {
 
 const n = sequenceOf(Math.random)
   .take(10)
-  .gather(Gatherers.withIndex())
-  .map(([a, b]) => [b, a])
+  .gather(Gatherers.sortedWith((a, b) => a - b))
   .toArray()
-  .join("\n");
 
 console.log(n);

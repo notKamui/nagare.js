@@ -52,6 +52,7 @@ export interface Sequence<T> extends Iterable<T> {
   takeUntil(predicate: (item: T) => boolean): Sequence<T>;
   drop(limit: number): Sequence<T>;
   dropWhile(predicate: (item: T) => boolean): Sequence<T>;
+  sortedWith(comparator: (a: T, b: T) => number): Sequence<T>;
 
   // Collectors
   findFirst(predicate: (item: T) => boolean): T | undefined;
@@ -238,6 +239,10 @@ function node<Head, In, Out>(
 
     dropWhile(predicate) {
       return this.gather(Gatherers.dropWhile(predicate));
+    },
+
+    sortedWith(comparator) {
+      return this.gather(Gatherers.sortedWith(comparator));
     },
 
     // Collectors

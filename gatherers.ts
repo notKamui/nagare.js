@@ -127,4 +127,17 @@ export const Gatherers = {
       }
     })
   },
+
+  sortedWith<T>(comparator: (a: T, b: T) => number) {
+    return gatherer<T, T, T[]>({
+      initializer() { return [] },
+      integrator(item, _, context) {
+        context.push(item);
+        return true;
+      },
+      finisher(push, context) {
+        context.sort(comparator).forEach(push);
+      }
+    })
+  },
 } as const;
