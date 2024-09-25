@@ -1,6 +1,24 @@
-import { gatherer, type Sequence } from "./sequence";
+import { gatherer, type Gatherer, type Sequence } from "./sequence";
 
 export const Gatherers = {
+  pipe<T1, V1, C1, V2, C2>(g1: Gatherer<T1, V1, C1>, g2: Gatherer<V1, V2, C2>) {
+    return gatherer<T1, V2, [C1, C2]>({
+      initializer() {
+        return [g1.initializer?.() as C1, g2.initializer?.() as C2]
+      },
+      integrator(item, push, [c1, c2]) {
+        return g1.integrator(item, v1 => g2.integrator(v1, push, c2), c1);
+      },
+      finisher(push, [c1, c2]) {
+        if (g1.finisher) {
+          g1.finisher(_ => g2.finisher?.(push, c2), c1);
+        } else {
+          g2.finisher?.(push, c2);
+        }
+      }
+    })
+  },
+
   peek<T>(callback: (item: T) => void) {
     return gatherer<T, T>({
       integrator(item, push) {

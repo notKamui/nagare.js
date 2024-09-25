@@ -10,7 +10,10 @@ const people = [
 ]
 
 const n = sequenceOf(people)
-  .groupBy(n => n.country, n => n.name)
-  .toObject();
+  .gather(Gatherers.pipe(
+    Gatherers.filter(p => p.country === "USA"),
+    Gatherers.map(p => p.name)
+  ))
+  .toArray();
 
 console.log(n);
