@@ -95,6 +95,15 @@ export const Gatherers = {
     })
   },
 
+  takeUntil<T>(predicate: (item: T) => boolean) {
+    return gatherer<T, T>({
+      integrator(item, push) {
+        if (predicate(item)) return false;
+        return push(item);
+      }
+    })
+  },
+
   drop<T>(limit: number) {
     return gatherer<T, T, { count: number }>({
       initializer() { return { count: 0 } },
@@ -104,5 +113,18 @@ export const Gatherers = {
         return true;
       }
     })
-  }
+  },
+
+  dropWhile<T>(predicate: (item: T) => boolean) {
+    return gatherer<T, T, { dropping: boolean }>({
+      initializer() { return { dropping: true } },
+      integrator(item, push, context) {
+        if (context.dropping) {
+          if (predicate(item)) return true;
+          context.dropping = false;
+        }
+        return push(item);
+      }
+    })
+  },
 } as const;

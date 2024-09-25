@@ -49,7 +49,9 @@ export interface Sequence<T> extends Iterable<T> {
   zip<V>(other: Sequence<V>): Sequence<[T, V]>;
   withIndex(): Sequence<[T, number]>;
   take(limit: number): Sequence<T>;
+  takeUntil(predicate: (item: T) => boolean): Sequence<T>;
   drop(limit: number): Sequence<T>;
+  dropWhile(predicate: (item: T) => boolean): Sequence<T>;
 
   // Collectors
   findFirst(predicate: (item: T) => boolean): T | undefined;
@@ -193,10 +195,6 @@ function node<Head, In, Out>(
       }
     },
 
-    withIndex() {
-      return this.gather(Gatherers.withIndex());
-    },
-
     // Gatherers
     filter(predicate) {
       return this.gather(Gatherers.filter(predicate));
@@ -222,12 +220,24 @@ function node<Head, In, Out>(
       return this.gather(Gatherers.zip(other));
     },
 
+    withIndex() {
+      return this.gather(Gatherers.withIndex());
+    },
+
     take(limit) {
       return this.gather(Gatherers.take(limit));
     },
 
+    takeUntil(predicate) {
+      return this.gather(Gatherers.takeUntil(predicate));
+    },
+
     drop(limit) {
       return this.gather(Gatherers.drop(limit));
+    },
+
+    dropWhile(predicate) {
+      return this.gather(Gatherers.dropWhile(predicate));
     },
 
     // Collectors
