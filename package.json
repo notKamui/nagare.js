@@ -1,11 +1,17 @@
 {
   "name": "sequence",
-  "module": "index.ts",
   "type": "module",
-  "devDependencies": {
-    "@types/bun": "latest"
+  "module": "index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^3.7.2",
+    "@types/bun": "latest",
+    "eslint": "^9.11.1"
   }
 }

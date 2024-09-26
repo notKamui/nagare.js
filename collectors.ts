@@ -1,7 +1,7 @@
-import { collector, type Collector } from "./sequence";
+import { collector, type Collector } from './sequence'
 
-function reduce<T, R>(reducer: (acc: R, next: T) => R): Collector<T, R | undefined>;
-function reduce<T, R>(reducer: (acc: R, next: T) => R, initial: R): Collector<T, R>;
+function reduce<T, R>(reducer: (acc: R, next: T) => R): Collector<T, R | undefined>
+function reduce<T, R>(reducer: (acc: R, next: T) => R, initial: R): Collector<T, R>
 function reduce<T, R>(reducer: (acc: R, next: T) => R, initial?: R) {
   return collector<T, R | undefined>({
     supplier() {
@@ -13,10 +13,9 @@ function reduce<T, R>(reducer: (acc: R, next: T) => R, initial?: R) {
       } else {
         return reducer(acc, item)
       }
-    }
+    },
   })
 }
-
 
 export const Collectors = {
   findFirst<T>(predicate: (item: T) => boolean) {
@@ -24,11 +23,11 @@ export const Collectors = {
       supplier() { return undefined },
       accumulator(acc, item, stop) {
         if (predicate(item)) {
-          stop();
-          return item;
+          stop()
+          return item
         }
         return acc
-      }
+      },
     })
   },
 
@@ -36,9 +35,9 @@ export const Collectors = {
     return collector<T, T | undefined>({
       supplier() { return undefined },
       accumulator(_, item, stop) {
-        stop();
-        return item;
-      }
+        stop()
+        return item
+      },
     })
   },
 
@@ -48,7 +47,7 @@ export const Collectors = {
       accumulator(acc, item) {
         acc.push(item)
         return acc
-      }
+      },
     })
   },
 
@@ -58,7 +57,7 @@ export const Collectors = {
       accumulator(acc, item) {
         acc.add(item)
         return acc
-      }
+      },
     })
   },
 
@@ -84,7 +83,7 @@ export const Collectors = {
           return true
         }
         return acc
-      }
+      },
     })
   },
 
@@ -97,7 +96,7 @@ export const Collectors = {
           return false
         }
         return acc
-      }
+      },
     })
   },
 
@@ -106,7 +105,7 @@ export const Collectors = {
       supplier() { return 0 },
       accumulator(acc) {
         return acc + 1
-      }
+      },
     })
-  }
-} as const;
+  },
+} as const

@@ -1,4 +1,4 @@
-import { gatherer, type Gatherer, type Sequence } from "./sequence";
+import { gatherer, type Gatherer, type Sequence } from './sequence'
 
 export const Gatherers = {
   pipe<T1, V1, C1, V2, C2>(g1: Gatherer<T1, V1, C1>, g2: Gatherer<V1, V2, C2>) {
@@ -7,56 +7,54 @@ export const Gatherers = {
         return [g1.initializer?.() as C1, g2.initializer?.() as C2]
       },
       integrator(item, push, [c1, c2]) {
-        return g1.integrator(item, v1 => g2.integrator(v1, push, c2), c1);
+        return g1.integrator(item, v1 => g2.integrator(v1, push, c2), c1)
       },
       finisher(push, [c1, c2]) {
         if (g1.finisher) {
-          g1.finisher(_ => g2.finisher?.(push, c2), c1);
+          g1.finisher(_ => g2.finisher?.(push, c2), c1)
         } else {
-          g2.finisher?.(push, c2);
+          g2.finisher?.(push, c2)
         }
-      }
+      },
     })
   },
 
   peek<T>(callback: (item: T) => void) {
     return gatherer<T, T>({
       integrator(item, push) {
-        callback(item);
-        return push(item);
-      }
+        callback(item)
+        return push(item)
+      },
     })
   },
 
   filter<T>(predicate: (item: T) => boolean) {
     return gatherer<T, T>({
       integrator(item, push) {
-        if (predicate(item)) {
-          return push(item);
-        }
-        return true;
-      }
+        if (predicate(item)) return push(item)
+        return true
+      },
     })
   },
 
   map<T, V>(transform: (item: T) => V) {
     return gatherer<T, V>({
       integrator(item, push) {
-        return push(transform(item));
-      }
+        return push(transform(item))
+      },
     })
   },
 
   flatMap<T, V>(transform: (item: T) => Sequence<V>) {
     return gatherer<T, V>({
       integrator(item, push) {
-        let cancelled = false;
-        const subsequence = transform(item);
-        subsequence.forEach(e => {
-          if (cancelled) return;
-          cancelled = !push(e);
-        });
-        return !cancelled;
+        let cancelled = false
+        const subsequence = transform(item)
+        subsequence.forEach((e) => {
+          if (cancelled) return
+          cancelled = !push(e)
+        })
+        return !cancelled
       },
     })
   },
@@ -65,10 +63,10 @@ export const Gatherers = {
     return gatherer<Iterable<T>, T>({
       integrator(sequence, push) {
         for (const item of sequence) {
-          if (!push(item)) return false;
+          if (!push(item)) return false
         }
-        return true;
-      }
+        return true
+      },
     })
   },
 
@@ -79,11 +77,11 @@ export const Gatherers = {
       },
       integrator(item, push, context) {
         if (context.prev !== undefined) {
-          if (!push([context.prev, item])) return false;
+          if (!push([context.prev, item])) return false
         }
-        context.prev = item;
-        return true;
-      }
+        context.prev = item
+        return true
+      },
     })
   },
 
@@ -93,10 +91,10 @@ export const Gatherers = {
         return { other: other[Symbol.iterator]() }
       },
       integrator(item, push, context) {
-        const next = context.other.next();
-        if (next.done) return false;
-        return push([item, next.value]);
-      }
+        const next = context.other.next()
+        if (next.done) return false
+        return push([item, next.value])
+      },
     })
   },
 
@@ -106,8 +104,8 @@ export const Gatherers = {
         return { index: 0 }
       },
       integrator(item, push, context) {
-        return push([item, context.index++]);
-      }
+        return push([item, context.index++])
+      },
     })
   },
 
@@ -115,19 +113,19 @@ export const Gatherers = {
     return gatherer<T, T, { count: number }>({
       initializer() { return { count: 0 } },
       integrator(item, push, context) {
-        if (context.count >= limit) return false;
-        context.count++;
-        return push(item);
-      }
+        if (context.count >= limit) return false
+        context.count++
+        return push(item)
+      },
     })
   },
 
   takeUntil<T>(predicate: (item: T) => boolean) {
     return gatherer<T, T>({
       integrator(item, push) {
-        if (predicate(item)) return false;
-        return push(item);
-      }
+        if (predicate(item)) return false
+        return push(item)
+      },
     })
   },
 
@@ -135,10 +133,10 @@ export const Gatherers = {
     return gatherer<T, T, { count: number }>({
       initializer() { return { count: 0 } },
       integrator(item, push, context) {
-        if (context.count >= limit) return push(item);
-        context.count++;
-        return true;
-      }
+        if (context.count >= limit) return push(item)
+        context.count++
+        return true
+      },
     })
   },
 
@@ -147,11 +145,11 @@ export const Gatherers = {
       initializer() { return { dropping: true } },
       integrator(item, push, context) {
         if (context.dropping) {
-          if (predicate(item)) return true;
-          context.dropping = false;
+          if (predicate(item)) return true
+          context.dropping = false
         }
-        return push(item);
-      }
+        return push(item)
+      },
     })
   },
 
@@ -159,12 +157,12 @@ export const Gatherers = {
     return gatherer<T, T, T[]>({
       initializer() { return [] },
       integrator(item, _, context) {
-        context.push(item);
-        return true;
+        context.push(item)
+        return true
       },
       finisher(push, context) {
-        context.sort(comparator).forEach(push);
-      }
+        context.sort(comparator).forEach(push)
+      },
     })
   },
 
@@ -172,10 +170,10 @@ export const Gatherers = {
     return gatherer<T, T, Set<T>>({
       initializer() { return new Set() },
       integrator(item, push, context) {
-        if (context.has(item)) return true;
-        context.add(item);
-        return push(item);
-      }
+        if (context.has(item)) return true
+        context.add(item)
+        return push(item)
+      },
     })
   },
 
@@ -183,20 +181,20 @@ export const Gatherers = {
     return gatherer<T, [K, V[]], Map<K, V[] | undefined>>({
       initializer() { return new Map() },
       integrator(item, _, context) {
-        const key = keySelector(item);
-        let group = context.get(key);
+        const key = keySelector(item)
+        let group = context.get(key)
         if (!group) {
-          group = [];
-          context.set(key, group);
+          group = []
+          context.set(key, group)
         }
-        group.push(valueSelector(item));
-        return true;
+        group.push(valueSelector(item))
+        return true
       },
       finisher(push, context) {
         context.forEach((group, key) => {
-          if (group) push([key, group]);
+          if (group) push([key, group])
         })
-      }
+      },
     })
   },
 
@@ -204,16 +202,16 @@ export const Gatherers = {
     return gatherer<T, [K, V], Map<K, V | undefined>>({
       initializer() { return new Map() },
       integrator(item, _, context) {
-        const key = keySelector(item);
-        const value = valueSelector(item);
-        context.set(key, value);
-        return true;
+        const key = keySelector(item)
+        const value = valueSelector(item)
+        context.set(key, value)
+        return true
       },
       finisher(push, context) {
         context.forEach((value, key) => {
-          if (value) push([key, value]);
+          if (value) push([key, value])
         })
-      }
+      },
     })
-  }
-} as const;
+  },
+} as const
