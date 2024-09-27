@@ -1,5 +1,5 @@
-import { Collectors } from './collectors'
-import { Gatherers } from './gatherers'
+import { type Collector, Collectors } from './collectors'
+import { type Gatherer, Gatherers } from './gatherers'
 
 interface Sink<E> {
   accept: (item: E) => boolean
@@ -8,30 +8,6 @@ interface Sink<E> {
 
 interface TailSink<E> {
   accept: (item: E, stop: () => void) => boolean
-}
-
-export type Gatherer<T, V, C = never> = {
-  initializer: () => C
-  integrator: (item: T, push: (item: V) => boolean, context: C) => boolean
-  finisher?: (push: (item: V) => void, context: C) => void
-} | {
-  initializer?: never
-  integrator: (item: T, push: (item: V) => boolean) => boolean
-  finisher?: (push: (item: V) => void) => void
-}
-
-export interface Collector<T, A, R = A> {
-  supplier: () => A
-  accumulator: (acc: A, item: T, stop: () => void) => A
-  finisher?: (acc: A) => R
-}
-
-export function gatherer<T, V, C = V>(gatherer: Gatherer<T, V, C>): Gatherer<T, V, any> {
-  return gatherer
-}
-
-export function collector<T, A, R = A>(collector: Collector<T, A, R>): Collector<T, any, R> {
-  return collector
 }
 
 export interface Sequence<T> extends Iterable<T> {

@@ -1,4 +1,12 @@
-import { collector, type Collector } from './sequence'
+export interface Collector<T, A, R = A> {
+  supplier: () => A
+  accumulator: (acc: A, item: T, stop: () => void) => A
+  finisher?: (acc: A) => R
+}
+
+export function collector<T, A, R = A>(collector: Collector<T, A, R>): Collector<T, any, R> {
+  return collector
+}
 
 function reduce<T, R>(reducer: (acc: R, next: T) => R): Collector<T, R | undefined>
 function reduce<T, R>(reducer: (acc: R, next: T) => R, initial: R): Collector<T, R>

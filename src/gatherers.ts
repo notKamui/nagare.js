@@ -1,4 +1,18 @@
-import { gatherer, type Gatherer, type Sequence } from './sequence'
+import type { Sequence } from './sequence'
+
+export type Gatherer<T, V, C = never> = {
+  initializer: () => C
+  integrator: (item: T, push: (item: V) => boolean, context: C) => boolean
+  finisher?: (push: (item: V) => void, context: C) => void
+} | {
+  initializer?: never
+  integrator: (item: T, push: (item: V) => boolean) => boolean
+  finisher?: (push: (item: V) => void) => void
+}
+
+export function gatherer<T, V, C = V>(gatherer: Gatherer<T, V, C>): Gatherer<T, V, any> {
+  return gatherer
+}
 
 export const Gatherers = {
   pipe<T1, V1, C1, V2, C2>(g1: Gatherer<T1, V1, C1>, g2: Gatherer<V1, V2, C2>) {
