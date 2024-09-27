@@ -11,15 +11,23 @@
     "url": "git+https://github.com/notKamui/nagare.js.git"
   },
   "bugs": "https://github.com/notKamui/nagare.js/issues",
-  "keywords": ["bun", "sequence", "flow", "lazy", "functional", "iterable", "extendable"],
+  "keywords": [
+    "bun",
+    "sequence",
+    "flow",
+    "lazy",
+    "functional",
+    "iterable",
+    "extendable"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
   "scripts": {
     "build": "bun run scripts/build.ts",
     "prepublishOnly": "bun run build",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint": "bunx biome check",
+    "lint:fix": "bunx biome check --write"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
@@ -29,7 +37,5 @@
     "@types/bun": "latest",
     "bun-plugin-dts": "^0.2.3"
   },
-  "trustedDependencies": [
-    "@biomejs/biome"
-  ]
+  "trustedDependencies": ["@biomejs/biome"]
 }

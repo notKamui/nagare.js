@@ -39,8 +39,13 @@ export interface Sequence<T> extends Iterable<T> {
   first: () => T | undefined
   toArray: () => T[]
   toSet: () => Set<T>
-  toObject: T extends readonly [infer K, infer V] | [infer K, infer V] ? [K] extends [string | number | symbol] ? () => Record<K, V> : never : never
-  reduce: (<R>(reducer: (acc: R, next: T) => R) => R | undefined) & (<R>(reducer: (acc: R, next: T) => R, initial: R) => R)
+  toObject: T extends readonly [infer KC, infer VC] | [infer K, infer V]
+    ? [KC & K] extends [string | number | symbol]
+      ? () => Record<KC & K, VC & V>
+      : never
+    : never
+  reduce: (<R>(reducer: (acc: R, next: T) => R) => R | undefined) &
+    (<R>(reducer: (acc: R, next: T) => R, initial: R) => R)
   sum: [T] extends [number] ? () => number : never
   some: (predicate: (item: T) => boolean) => boolean
   every: (predicate: (item: T) => boolean) => boolean
@@ -69,7 +74,7 @@ function node<Head, In, Out>(
   }
 
   return {
-    [WrapAll]: wrapAll ?? (downstream => previous![WrapAll](wrap(downstream))),
+    [WrapAll]: wrapAll ?? ((downstream) => previous![WrapAll](wrap(downstream))),
 
     [Consume](sink: TailSink<Out>) {
       checkConsumed()
@@ -84,7 +89,7 @@ function node<Head, In, Out>(
           sink.accept(item, stop)
           return true
         },
-        onFinish() { },
+        onFinish() {},
       })
       const iterator = source()
       while (true) {
@@ -96,32 +101,20 @@ function node<Head, In, Out>(
       }
     },
 
-    gather({
-      initializer,
-      integrator,
-      finisher,
-    }) {
+    gather({ initializer, integrator, finisher }) {
       const context = initializer?.()
-      return node(
-        source,
-        this,
-        downstream => ({
-          accept(item) {
-            return integrator(item, downstream.accept, context as any)
-          },
-          onFinish() {
-            finisher?.(downstream.accept, context as any)
-            downstream.onFinish()
-          },
-        }),
-      )
+      return node(source, this, (downstream) => ({
+        accept(item) {
+          return integrator(item, downstream.accept, context as any)
+        },
+        onFinish() {
+          finisher?.(downstream.accept, context as any)
+          downstream.onFinish()
+        },
+      }))
     },
 
-    collect({
-      supplier,
-      accumulator,
-      finisher = acc => acc as any,
-    }) {
+    collect({ supplier, accumulator, finisher = (acc) => acc as any }) {
       let acc = supplier()
       this[Consume]({
         accept(item, stop) {
@@ -162,7 +155,7 @@ function node<Head, In, Out>(
           sink.accept(item, stop)
           return true
         },
-        onFinish() { },
+        onFinish() {},
       })
       const iterator = source()
 
@@ -264,11 +257,7 @@ function node<Head, In, Out>(
       return this.collect(Collectors.toObject())
     } as any,
 
-    reduce: function (
-      this: Sequence<Out>,
-      reducer: (acc: any, next: Out) => any,
-      initial?: any,
-    ) {
+    reduce: function (this: Sequence<Out>, reducer: (acc: any, next: Out) => any, initial?: any) {
       return this.collect(Collectors.reduce(reducer, initial))
     } as any,
 
@@ -293,13 +282,16 @@ function node<Head, In, Out>(
 export function sequenceOf<T>(iterable: Iterable<T>): Sequence<T>
 export function sequenceOf<T>(generator: () => T): Sequence<T>
 export function sequenceOf<T>(iterableOrGenerator: Iterable<T> | (() => T)): Sequence<T> {
-  const source = Symbol.iterator in iterableOrGenerator
-    ? () => iterableOrGenerator[Symbol.iterator]()
-    : () => ({ next: () => ({ done: false, value: iterableOrGenerator() }) })
+  const source =
+    Symbol.iterator in iterableOrGenerator
+      ? () => iterableOrGenerator[Symbol.iterator]()
+      : () => ({ next: () => ({ done: false, value: iterableOrGenerator() }) })
   return node(
     source,
     null,
-    (_) => { throw new Error('Cannot wrap the source node') },
-    downstream => downstream,
+    (_) => {
+      throw new Error('Cannot wrap the source node')
+    },
+    (downstream) => downstream,
   )
 }

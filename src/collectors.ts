@@ -16,11 +16,8 @@ function reduce<T, R>(reducer: (acc: R, next: T) => R, initial?: R) {
       return initial
     },
     accumulator(acc, item) {
-      if (acc === undefined) {
-        return item as unknown as R
-      } else {
-        return reducer(acc, item)
-      }
+      if (acc === undefined) return item as unknown as R
+      return reducer(acc, item)
     },
   })
 }
@@ -28,7 +25,9 @@ function reduce<T, R>(reducer: (acc: R, next: T) => R, initial?: R) {
 export const Collectors = {
   findFirst<T>(predicate: (item: T) => boolean) {
     return collector<T, T | undefined>({
-      supplier() { return undefined },
+      supplier() {
+        return undefined
+      },
       accumulator(acc, item, stop) {
         if (predicate(item)) {
           stop()
@@ -41,7 +40,9 @@ export const Collectors = {
 
   first<T>() {
     return collector<T, T | undefined>({
-      supplier() { return undefined },
+      supplier() {
+        return undefined
+      },
       accumulator(_, item, stop) {
         stop()
         return item
@@ -51,7 +52,9 @@ export const Collectors = {
 
   toArray<T>() {
     return collector<T, T[]>({
-      supplier() { return [] },
+      supplier() {
+        return []
+      },
       accumulator(acc, item) {
         acc.push(item)
         return acc
@@ -61,7 +64,9 @@ export const Collectors = {
 
   toSet<T>() {
     return collector<T, Set<T>>({
-      supplier() { return new Set() },
+      supplier() {
+        return new Set()
+      },
       accumulator(acc, item) {
         acc.add(item)
         return acc
@@ -70,10 +75,13 @@ export const Collectors = {
   },
 
   toObject<T extends [K, V], K extends string | number | symbol, V>() {
-    return reduce<T, Record<K, V>>((acc, [k, v]) => {
-      acc[k] = v
-      return acc
-    }, {} as Record<K, V>)
+    return reduce<T, Record<K, V>>(
+      (acc, [k, v]) => {
+        acc[k] = v
+        return acc
+      },
+      {} as Record<K, V>,
+    )
   },
 
   reduce,
@@ -84,7 +92,9 @@ export const Collectors = {
 
   some<T>(predicate: (item: T) => boolean) {
     return collector<T, boolean>({
-      supplier() { return false },
+      supplier() {
+        return false
+      },
       accumulator(acc, item, stop) {
         if (predicate(item)) {
           stop()
@@ -97,7 +107,9 @@ export const Collectors = {
 
   every<T>(predicate: (item: T) => boolean) {
     return collector<T, boolean>({
-      supplier() { return true },
+      supplier() {
+        return true
+      },
       accumulator(acc, item, stop) {
         if (!predicate(item)) {
           stop()
@@ -110,7 +122,9 @@ export const Collectors = {
 
   count() {
     return collector<any, number>({
-      supplier() { return 0 },
+      supplier() {
+        return 0
+      },
       accumulator(acc) {
         return acc + 1
       },

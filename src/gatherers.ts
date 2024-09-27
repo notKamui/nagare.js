@@ -1,14 +1,16 @@
 import type { Sequence } from './sequence'
 
-export type Gatherer<T, V, C = never> = {
-  initializer: () => C
-  integrator: (item: T, push: (item: V) => boolean, context: C) => boolean
-  finisher?: (push: (item: V) => void, context: C) => void
-} | {
-  initializer?: never
-  integrator: (item: T, push: (item: V) => boolean) => boolean
-  finisher?: (push: (item: V) => void) => void
-}
+export type Gatherer<T, V, C = never> =
+  | {
+      initializer: () => C
+      integrator: (item: T, push: (item: V) => boolean, context: C) => boolean
+      finisher?: (push: (item: V) => void, context: C) => void
+    }
+  | {
+      initializer?: never
+      integrator: (item: T, push: (item: V) => boolean) => boolean
+      finisher?: (push: (item: V) => void) => void
+    }
 
 export function gatherer<T, V, C = V>(gatherer: Gatherer<T, V, C>): Gatherer<T, V, any> {
   return gatherer
@@ -21,11 +23,11 @@ export const Gatherers = {
         return [g1.initializer?.() as C1, g2.initializer?.() as C2]
       },
       integrator(item, push, [c1, c2]) {
-        return g1.integrator(item, v1 => g2.integrator(v1, push, c2), c1)
+        return g1.integrator(item, (v1) => g2.integrator(v1, push, c2), c1)
       },
       finisher(push, [c1, c2]) {
         if (g1.finisher) {
-          g1.finisher(_ => g2.finisher?.(push, c2), c1)
+          g1.finisher((_) => g2.finisher?.(push, c2), c1)
         } else {
           g2.finisher?.(push, c2)
         }
@@ -64,10 +66,10 @@ export const Gatherers = {
       integrator(item, push) {
         let cancelled = false
         const subsequence = transform(item)
-        subsequence.forEach((e) => {
-          if (cancelled) return
+        for (const e of subsequence) {
+          if (cancelled) break
           cancelled = !push(e)
-        })
+        }
         return !cancelled
       },
     })
@@ -125,7 +127,9 @@ export const Gatherers = {
 
   take<T>(limit: number) {
     return gatherer<T, T, { count: number }>({
-      initializer() { return { count: 0 } },
+      initializer() {
+        return { count: 0 }
+      },
       integrator(item, push, context) {
         if (context.count >= limit) return false
         context.count++
@@ -145,7 +149,9 @@ export const Gatherers = {
 
   drop<T>(limit: number) {
     return gatherer<T, T, { count: number }>({
-      initializer() { return { count: 0 } },
+      initializer() {
+        return { count: 0 }
+      },
       integrator(item, push, context) {
         if (context.count >= limit) return push(item)
         context.count++
@@ -156,7 +162,9 @@ export const Gatherers = {
 
   dropWhile<T>(predicate: (item: T) => boolean) {
     return gatherer<T, T, { dropping: boolean }>({
-      initializer() { return { dropping: true } },
+      initializer() {
+        return { dropping: true }
+      },
       integrator(item, push, context) {
         if (context.dropping) {
           if (predicate(item)) return true
@@ -169,7 +177,9 @@ export const Gatherers = {
 
   sortedWith<T>(comparator: (a: T, b: T) => number) {
     return gatherer<T, T, T[]>({
-      initializer() { return [] },
+      initializer() {
+        return []
+      },
       integrator(item, _, context) {
         context.push(item)
         return true
@@ -182,7 +192,9 @@ export const Gatherers = {
 
   distinct<T>() {
     return gatherer<T, T, Set<T>>({
-      initializer() { return new Set() },
+      initializer() {
+        return new Set()
+      },
       integrator(item, push, context) {
         if (context.has(item)) return true
         context.add(item)
@@ -191,9 +203,11 @@ export const Gatherers = {
     })
   },
 
-  groupBy<T, K, V = T>(keySelector: (item: T) => K, valueSelector: (item: T) => V = item => item as unknown as V) {
+  groupBy<T, K, V = T>(keySelector: (item: T) => K, valueSelector: (item: T) => V = (item) => item as unknown as V) {
     return gatherer<T, [K, V[]], Map<K, V[] | undefined>>({
-      initializer() { return new Map() },
+      initializer() {
+        return new Map()
+      },
       integrator(item, _, context) {
         const key = keySelector(item)
         let group = context.get(key)
@@ -212,9 +226,14 @@ export const Gatherers = {
     })
   },
 
-  associateBy<T, K, V = T>(keySelector: (item: T) => K, valueSelector: (item: T) => V = item => item as unknown as V) {
+  associateBy<T, K, V = T>(
+    keySelector: (item: T) => K,
+    valueSelector: (item: T) => V = (item) => item as unknown as V,
+  ) {
     return gatherer<T, [K, V], Map<K, V | undefined>>({
-      initializer() { return new Map() },
+      initializer() {
+        return new Map()
+      },
       integrator(item, _, context) {
         const key = keySelector(item)
         const value = valueSelector(item)
