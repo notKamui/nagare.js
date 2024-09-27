@@ -1,8 +1,23 @@
 {
   "name": "sequence",
   "type": "module",
-  "module": "index.ts",
+  "version": "0.0.1",
+  "description": "Lazy, flow-like, sequential and functional execution for iterables and generators",
+  "author": "Jimmy Teillard <https://github.com/notKamui>",
+  "license": "MIT",
+  "homepage": "https://github.com/notKamui/nagare.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/notKamui/nagare.js.git"
+  },
+  "bugs": "https://github.com/notKamui/nagare.js/issues",
+  "keywords": ["bun", "sequence", "flow", "lazy", "functional", "iterable", "extendable"],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
   "scripts": {
+    "build": "bun run scripts/build.ts",
+    "prepublishOnly": "bun run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
@@ -12,6 +27,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "^3.7.3",
     "@types/bun": "latest",
+    "bun-plugin-dts": "^0.2.3",
     "eslint": "^9.11.1"
   }
 }
