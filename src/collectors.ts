@@ -8,20 +8,6 @@ export function collector<T, A, R = A>(collector: Collector<T, A, R>): Collector
   return collector
 }
 
-function reduce<T, R>(reducer: (acc: R, next: T) => R): Collector<T, R | undefined>
-function reduce<T, R>(reducer: (acc: R, next: T) => R, initial: R): Collector<T, R>
-function reduce<T, R>(reducer: (acc: R, next: T) => R, initial?: R) {
-  return collector<T, R | undefined>({
-    supplier() {
-      return initial
-    },
-    accumulator(acc, item) {
-      if (acc === undefined) return item as unknown as R
-      return reducer(acc, item)
-    },
-  })
-}
-
 export const Collectors = {
   findFirst<T>(predicate: (item: T) => boolean) {
     return collector<T, T | undefined>({
@@ -143,3 +129,17 @@ export const Collectors = {
     })
   },
 } as const
+
+function reduce<T, R>(reducer: (acc: R, next: T) => R): Collector<T, any, R | undefined>
+function reduce<T, R>(reducer: (acc: R, next: T) => R, initial: R): Collector<T, any, R>
+function reduce<T, R>(reducer: (acc: R, next: T) => R, initial?: R) {
+  return collector<T, R | undefined>({
+    supplier() {
+      return initial
+    },
+    accumulator(acc, item) {
+      if (acc === undefined) return item as unknown as R
+      return reducer(acc, item)
+    },
+  })
+}

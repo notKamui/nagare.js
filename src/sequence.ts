@@ -1,13 +1,23 @@
 import { type Collector, Collectors } from './collectors'
 import { type Gatherer, Gatherers } from './gatherers'
 
-interface Sink<E> {
-  accept: (item: E) => boolean
-  onFinish: () => void
-}
 
-interface TailSink<E> {
-  accept: (item: E, stop: () => void) => boolean
+export function sequenceOf<T>(iterable: Iterable<T>): Sequence<T>
+export function sequenceOf<T>(generator: (index: number) => T): Sequence<T>
+export function sequenceOf<T>(iterableOrGenerator: Iterable<T> | ((index: number) => T)): Sequence<T> {
+  const source =
+    Symbol.iterator in iterableOrGenerator
+      ? () => iterableOrGenerator[Symbol.iterator]()
+      : () => {
+        let index = 0
+        return { next: () => ({ done: false, value: iterableOrGenerator(index++) }) }
+      }
+  return node(
+    source,
+    null,
+    null as any, // This is a root node, so it doesn't have a wrap function an can never be called or covered
+    (downstream) => downstream,
+  )
 }
 
 export interface Sequence<T> extends Iterable<T> {
@@ -50,6 +60,15 @@ export interface Sequence<T> extends Iterable<T> {
   some: (predicate: (item: T) => boolean) => boolean
   every: (predicate: (item: T) => boolean) => boolean
   count: () => number
+}
+
+interface Sink<E> {
+  accept: (item: E) => boolean
+  onFinish: () => void
+}
+
+interface TailSink<E> {
+  accept: (item: E, stop: () => void) => boolean
 }
 
 const WrapAll = Symbol('__wrapAll')
@@ -274,20 +293,4 @@ function node<Head, In, Out>(
   }
 }
 
-export function sequenceOf<T>(iterable: Iterable<T>): Sequence<T>
-export function sequenceOf<T>(generator: (index: number) => T): Sequence<T>
-export function sequenceOf<T>(iterableOrGenerator: Iterable<T> | ((index: number) => T)): Sequence<T> {
-  const source =
-    Symbol.iterator in iterableOrGenerator
-      ? () => iterableOrGenerator[Symbol.iterator]()
-      : () => {
-        let index = 0
-        return { next: () => ({ done: false, value: iterableOrGenerator(index++) }) }
-      }
-  return node(
-    source,
-    null,
-    null as any, // This is a root node, so it doesn't have a wrap function an can never be called or covered
-    (downstream) => downstream,
-  )
-}
+
