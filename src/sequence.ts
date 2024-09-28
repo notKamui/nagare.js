@@ -137,11 +137,6 @@ function node<Head, In, Out>(
     [Symbol.iterator]() {
       checkConsumed()
 
-      let shouldStop = false
-      function stop() {
-        shouldStop = true
-      }
-
       let out: Out
       const sink: TailSink<Out> = {
         accept(item) {
@@ -152,7 +147,7 @@ function node<Head, In, Out>(
 
       const head = this[WrapAll]({
         accept(item) {
-          sink.accept(item, stop)
+          sink.accept(item, () => {})
           return true
         },
         onFinish() {},
@@ -162,7 +157,7 @@ function node<Head, In, Out>(
       return {
         next() {
           const { done, value } = iterator.next()
-          if (shouldStop || done || !head.accept(value)) {
+          if (done || !head.accept(value)) {
             head.onFinish()
             return { done: true, value: out }
           }

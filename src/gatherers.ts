@@ -77,8 +77,9 @@ export const Gatherers = {
 
   flatten<T>() {
     return gatherer<Iterable<T>, T>({
-      integrator(sequence, push) {
-        for (const item of sequence) {
+      integrator(iterable, push) {
+        if (!iterable[Symbol.iterator]) throw new Error('Cannot flatten non-nested sequence')
+        for (const item of iterable) {
           if (!push(item)) return false
         }
         return true
@@ -126,6 +127,9 @@ export const Gatherers = {
   },
 
   take<T>(limit: number) {
+    if (limit < 0 || !Number.isInteger(limit)) {
+      throw new Error('Limit must be a non-negative integer')
+    }
     return gatherer<T, T, { count: number }>({
       initializer() {
         return { count: 0 }
@@ -148,6 +152,9 @@ export const Gatherers = {
   },
 
   drop<T>(limit: number) {
+    if (limit < 0 || !Number.isInteger(limit)) {
+      throw new Error('Limit must be a non-negative integer')
+    }
     return gatherer<T, T, { count: number }>({
       initializer() {
         return { count: 0 }

@@ -76,7 +76,14 @@ export const Collectors = {
 
   toObject<T extends [K, V], K extends string | number | symbol, V>() {
     return reduce<T, Record<K, V>>(
-      (acc, [k, v]) => {
+      (acc, pair) => {
+        if (pair.length !== 2) {
+          throw new Error('Collectors.toObject can only be used with pairs')
+        }
+        const [k, v] = pair
+        if (typeof k !== 'string' && typeof k !== 'number' && typeof k !== 'symbol') {
+          throw new Error('Collectors.toObject can only be used with pairs with string, number or symbol keys')
+        }
         acc[k] = v
         return acc
       },
@@ -87,7 +94,12 @@ export const Collectors = {
   reduce,
 
   sum() {
-    return reduce<number, number>((acc, x) => acc + x, 0)
+    return reduce<number, number>((acc, x) => {
+      if (typeof x !== 'number') {
+        throw new Error('sum() can only be used with a sequence of numbers')
+      }
+      return acc + x
+    }, 0)
   },
 
   some<T>(predicate: (item: T) => boolean) {
