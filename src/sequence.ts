@@ -1,7 +1,6 @@
 import { type Collector, Collectors } from './collectors'
 import { type Gatherer, Gatherers } from './gatherers'
 
-
 export function sequenceOf<T>(iterable: Iterable<T>): Sequence<T>
 export function sequenceOf<T>(generator: (index: number) => T): Sequence<T>
 export function sequenceOf<T>(iterableOrGenerator: Iterable<T> | ((index: number) => T)): Sequence<T> {
@@ -9,9 +8,9 @@ export function sequenceOf<T>(iterableOrGenerator: Iterable<T> | ((index: number
     Symbol.iterator in iterableOrGenerator
       ? () => iterableOrGenerator[Symbol.iterator]()
       : () => {
-        let index = 0
-        return { next: () => ({ done: false, value: iterableOrGenerator(index++) }) }
-      }
+          let index = 0
+          return { next: () => ({ done: false, value: iterableOrGenerator(index++) }) }
+        }
   return node(
     source,
     null,
@@ -50,10 +49,10 @@ export interface Sequence<T> extends Iterable<T> {
   toArray: () => T[]
   toSet: () => Set<T>
   toObject: T extends readonly [infer KC, infer VC] | [infer K, infer V]
-  ? [KC & K] extends [string | number | symbol]
-  ? () => Record<KC & K, VC & V>
-  : never
-  : never
+    ? [KC & K] extends [string | number | symbol]
+      ? () => Record<KC & K, VC & V>
+      : never
+    : never
   reduce<R>(reducer: (acc: R, next: T) => R): R | undefined
   reduce<R>(reducer: (acc: R, next: T) => R, initial: R): R
   sum: [T] extends [number] ? () => number : never
@@ -108,7 +107,7 @@ function node<Head, In, Out>(
           sink.accept(item, stop)
           return true
         },
-        onFinish() { },
+        onFinish() {},
       })
       const iterator = source()
       while (true) {
@@ -166,10 +165,10 @@ function node<Head, In, Out>(
 
       const head = this[WrapAll]({
         accept(item) {
-          sink.accept(item, () => { })
+          sink.accept(item, () => {})
           return true
         },
-        onFinish() { },
+        onFinish() {},
       })
       const iterator = source()
 
@@ -292,5 +291,3 @@ function node<Head, In, Out>(
     },
   }
 }
-
-

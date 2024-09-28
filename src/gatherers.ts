@@ -17,7 +17,7 @@ export function gatherer<T, V, C = V>(gatherer: Gatherer<T, V, C>): Gatherer<T, 
 }
 
 export const Gatherers = {
-  pipe<T1, V1, C1, V2, C2>(g1: Gatherer<T1, V1, C1>, g2: Gatherer<V1, V2, C2>) {
+  pipe<T1, V1, C1, V2, C2>(g1: Gatherer<T1, V1, C1>, g2: Gatherer<V1, V2, C2>): Gatherer<T1, V2, any> {
     return gatherer<T1, V2, [C1, C2]>({
       initializer() {
         return [g1.initializer?.() as C1, g2.initializer?.() as C2]
@@ -41,7 +41,7 @@ export const Gatherers = {
     })
   },
 
-  peek<T>(callback: (item: T) => void) {
+  peek<T>(callback: (item: T) => void): Gatherer<T, T, any> {
     return gatherer<T, T>({
       integrator(item, push) {
         callback(item)
@@ -50,7 +50,7 @@ export const Gatherers = {
     })
   },
 
-  filter<T>(predicate: (item: T) => boolean) {
+  filter<T>(predicate: (item: T) => boolean): Gatherer<T, T, any> {
     return gatherer<T, T>({
       integrator(item, push) {
         if (predicate(item)) return push(item)
@@ -59,7 +59,7 @@ export const Gatherers = {
     })
   },
 
-  map<T, V>(transform: (item: T) => V) {
+  map<T, V>(transform: (item: T) => V): Gatherer<T, V, any> {
     return gatherer<T, V>({
       integrator(item, push) {
         return push(transform(item))
@@ -67,7 +67,7 @@ export const Gatherers = {
     })
   },
 
-  flatMap<T, V>(transform: (item: T) => Sequence<V>) {
+  flatMap<T, V>(transform: (item: T) => Sequence<V>): Gatherer<T, V, any> {
     return gatherer<T, V>({
       integrator(item, push) {
         let cancelled = false
@@ -81,7 +81,7 @@ export const Gatherers = {
     })
   },
 
-  flatten<T>() {
+  flatten<T>(): Gatherer<Iterable<T>, T, any> {
     return gatherer<Iterable<T>, T>({
       integrator(iterable, push) {
         if (!iterable[Symbol.iterator]) throw new Error('Cannot flatten non-nested sequence')
@@ -93,7 +93,7 @@ export const Gatherers = {
     })
   },
 
-  zipWithNext<T>() {
+  zipWithNext<T>(): Gatherer<T, [T, T], any> {
     return gatherer<T, [T, T], { prev?: T }>({
       initializer() {
         return {}
@@ -108,7 +108,7 @@ export const Gatherers = {
     })
   },
 
-  zip<T, U>(other: Sequence<U>) {
+  zip<T, U>(other: Sequence<U>): Gatherer<T, [T, U], any> {
     return gatherer<T, [T, U], { other: Iterator<U> }>({
       initializer() {
         return { other: other[Symbol.iterator]() }
@@ -121,7 +121,7 @@ export const Gatherers = {
     })
   },
 
-  withIndex<T>() {
+  withIndex<T>(): Gatherer<T, [T, number], any> {
     return gatherer<T, [T, number], { index: number }>({
       initializer() {
         return { index: 0 }
@@ -132,7 +132,7 @@ export const Gatherers = {
     })
   },
 
-  take<T>(limit: number) {
+  take<T>(limit: number): Gatherer<T, T, any> {
     if (limit < 0 || !Number.isInteger(limit)) {
       throw new Error('Limit must be a non-negative integer')
     }
@@ -148,7 +148,7 @@ export const Gatherers = {
     })
   },
 
-  takeUntil<T>(predicate: (item: T) => boolean) {
+  takeUntil<T>(predicate: (item: T) => boolean): Gatherer<T, T, any> {
     return gatherer<T, T>({
       integrator(item, push) {
         if (predicate(item)) return false
@@ -157,7 +157,7 @@ export const Gatherers = {
     })
   },
 
-  drop<T>(limit: number) {
+  drop<T>(limit: number): Gatherer<T, T, any> {
     if (limit < 0 || !Number.isInteger(limit)) {
       throw new Error('Limit must be a non-negative integer')
     }
@@ -173,7 +173,7 @@ export const Gatherers = {
     })
   },
 
-  dropWhile<T>(predicate: (item: T) => boolean) {
+  dropWhile<T>(predicate: (item: T) => boolean): Gatherer<T, T, any> {
     return gatherer<T, T, { dropping: boolean }>({
       initializer() {
         return { dropping: true }
@@ -188,7 +188,7 @@ export const Gatherers = {
     })
   },
 
-  sortedWith<T>(comparator: (a: T, b: T) => number) {
+  sortedWith<T>(comparator: (a: T, b: T) => number): Gatherer<T, T, any> {
     return gatherer<T, T, T[]>({
       initializer() {
         return []
@@ -203,7 +203,7 @@ export const Gatherers = {
     })
   },
 
-  distinct<T>() {
+  distinct<T>(): Gatherer<T, T, any> {
     return gatherer<T, T, Set<T>>({
       initializer() {
         return new Set()
@@ -216,7 +216,10 @@ export const Gatherers = {
     })
   },
 
-  groupBy<T, K, V = T>(keySelector: (item: T) => K, valueSelector: (item: T) => V = (item) => item as unknown as V) {
+  groupBy<T, K, V = T>(
+    keySelector: (item: T) => K,
+    valueSelector: (item: T) => V = (item) => item as unknown as V,
+  ): Gatherer<T, [K, V[]], any> {
     return gatherer<T, [K, V[]], Map<K, V[] | undefined>>({
       initializer() {
         return new Map()
@@ -242,7 +245,7 @@ export const Gatherers = {
   associateBy<T, K, V = T>(
     keySelector: (item: T) => K,
     valueSelector: (item: T) => V = (item) => item as unknown as V,
-  ) {
+  ): Gatherer<T, [K, V], any> {
     return gatherer<T, [K, V], Map<K, V | undefined>>({
       initializer() {
         return new Map()

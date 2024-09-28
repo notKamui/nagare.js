@@ -9,7 +9,7 @@ export function collector<T, A, R = A>(collector: Collector<T, A, R>): Collector
 }
 
 export const Collectors = {
-  findFirst<T>(predicate: (item: T) => boolean) {
+  findFirst<T>(predicate: (item: T) => boolean): Collector<T, any, T | undefined> {
     return collector<T, T | undefined>({
       supplier() {
         return undefined
@@ -24,7 +24,7 @@ export const Collectors = {
     })
   },
 
-  first<T>() {
+  first<T>(): Collector<T, any, T | undefined> {
     return collector<T, T | undefined>({
       supplier() {
         return undefined
@@ -36,7 +36,7 @@ export const Collectors = {
     })
   },
 
-  toArray<T>() {
+  toArray<T>(): Collector<T, any, T[]> {
     return collector<T, T[]>({
       supplier() {
         return []
@@ -48,7 +48,7 @@ export const Collectors = {
     })
   },
 
-  toSet<T>() {
+  toSet<T>(): Collector<T, any, Set<T>> {
     return collector<T, Set<T>>({
       supplier() {
         return new Set()
@@ -60,7 +60,7 @@ export const Collectors = {
     })
   },
 
-  toObject<T extends [K, V], K extends string | number | symbol, V>() {
+  toObject<T extends [K, V], K extends string | number | symbol, V>(): Collector<T, any, Record<K, V>> {
     return reduce<T, Record<K, V>>(
       (acc, pair) => {
         if (pair.length !== 2) {
@@ -79,7 +79,7 @@ export const Collectors = {
 
   reduce,
 
-  sum() {
+  sum(): Collector<number, any, number> {
     return reduce<number, number>((acc, x) => {
       if (typeof x !== 'number') {
         throw new Error('sum() can only be used with a sequence of numbers')
@@ -88,7 +88,7 @@ export const Collectors = {
     }, 0)
   },
 
-  some<T>(predicate: (item: T) => boolean) {
+  some<T>(predicate: (item: T) => boolean): Collector<T, any, boolean> {
     return collector<T, boolean>({
       supplier() {
         return false
@@ -103,7 +103,7 @@ export const Collectors = {
     })
   },
 
-  every<T>(predicate: (item: T) => boolean) {
+  every<T>(predicate: (item: T) => boolean): Collector<T, any, boolean> {
     return collector<T, boolean>({
       supplier() {
         return true
@@ -118,7 +118,7 @@ export const Collectors = {
     })
   },
 
-  count() {
+  count(): Collector<any, any, number> {
     return collector<any, number>({
       supplier() {
         return 0
