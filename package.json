@@ -24,6 +24,7 @@
   "types": "dist/index.d.ts",
   "files": ["dist"],
   "scripts": {
+    "test": "bun test --coverage --coverage-reporter=text --coverage-reporter=lcov",
     "build": "bun run scripts/build.ts",
     "prepublishOnly": "bun run build",
     "lint": "bunx biome check",

@@ -319,4 +319,31 @@ describe('built-in gatherers', () => {
       .toArray()
     expect(result).toEqual([4, 8])
   })
+
+  test('Gatherers.pipe should nest finishers', () => {
+    const s = sequenceOf([1, 2, 3, 4, 5])
+    const result = s
+      .gather(
+        Gatherers.pipe(
+          gatherer<number, number>({
+            integrator(item, push) {
+              return push(item)
+            },
+            finisher(push) {
+              push(100)
+            },
+          }),
+          gatherer<number, number>({
+            integrator(item, push) {
+              return push(item)
+            },
+            finisher(push) {
+              push(200)
+            },
+          }),
+        ),
+      )
+      .toArray()
+    expect(result).toEqual([1, 2, 3, 4, 5, 100, 200])
+  })
 })

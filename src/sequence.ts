@@ -284,9 +284,7 @@ export function sequenceOf<T>(iterableOrGenerator: Iterable<T> | (() => T)): Seq
   return node(
     source,
     null,
-    (_) => {
-      throw new Error('Cannot wrap the source node')
-    },
+    null as any, // This is a root node, so it doesn't have a wrap function an can never be called or covered
     (downstream) => downstream,
   )
 }

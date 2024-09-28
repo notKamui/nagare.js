@@ -27,7 +27,13 @@ export const Gatherers = {
       },
       finisher(push, [c1, c2]) {
         if (g1.finisher) {
-          g1.finisher((_) => g2.finisher?.(push, c2), c1)
+          g1.finisher((v1) => {
+            function nestedPush(v2: V2) {
+              push(v1 as unknown as V2)
+              push(v2)
+            }
+            g2.finisher?.(nestedPush, c2)
+          }, c1)
         } else {
           g2.finisher?.(push, c2)
         }
