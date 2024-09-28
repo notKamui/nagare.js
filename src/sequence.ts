@@ -44,8 +44,8 @@ export interface Sequence<T> extends Iterable<T> {
       ? () => Record<KC & K, VC & V>
       : never
     : never
-  reduce: (<R>(reducer: (acc: R, next: T) => R) => R | undefined) &
-    (<R>(reducer: (acc: R, next: T) => R, initial: R) => R)
+  reduce<R>(reducer: (acc: R, next: T) => R): R | undefined
+  reduce<R>(reducer: (acc: R, next: T) => R, initial: R): R
   sum: [T] extends [number] ? () => number : never
   some: (predicate: (item: T) => boolean) => boolean
   every: (predicate: (item: T) => boolean) => boolean
