@@ -1,15 +1,11 @@
 # sequence
 
-To install dependencies:
+Proof of concept for lazy sequential execution/applications on iterables.
 
-```bash
-bun install
-```
+Closely follows the Java Stream API.
 
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.1.26. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+Performance is optimized as much as possible, 
+but it is still mildly slower than regular applications on iterables in certain cases:
+- flatMap tanks the performance
+- the sequence is generally a bit faster than a regular application on iterables, except when the
+amount of elements is extremely high, at which point the sequence is slightly slower (this is surprising)
