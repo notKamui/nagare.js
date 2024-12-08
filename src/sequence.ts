@@ -14,7 +14,7 @@ export function sequenceOf<T>(iterableOrGenerator: Iterable<T> | ((index: number
   return node(
     source,
     null,
-    null as any, // This is a root node, so it doesn't have a wrap function an can never be called or covered
+    null as any, // This is a root node, so it doesn't have a wrap function and can never be called or covered
     (downstream) => downstream,
   )
 }
